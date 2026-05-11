@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import React, { Component, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -37,6 +37,40 @@ function ensureInfo(model) {
   return { ...DEFAULT_INFO, ...(model.info || {}) }
 }
 
+// ─── Error Boundary pour isoler les crashs du viewer ───────────────────────
+class ViewerErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, message: '' }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, message: error?.message || 'Erreur inconnue' }
+  }
+
+  componentDidCatch(error, info) {
+    console.warn('[Viewer] Erreur capturée :', error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="viewer-error">
+          <p>⚠️ Impossible de charger ce modèle.</p>
+          <p className="viewer-error-detail">{this.state.message}</p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, message: '' })}
+          >
+            Réessayer
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 function EldenModel({ url }) {
   const gltf = useGLTF(url)
 
@@ -64,10 +98,7 @@ function EldenModel({ url }) {
 
     root.position.sub(center)
 
-    return {
-      object: root,
-      scale: 3 / longest,
-    }
+    return { object: root, scale: 3 / longest }
   }, [gltf.scene])
 
   return (
@@ -78,7 +109,8 @@ function EldenModel({ url }) {
 }
 
 function Viewer({ modelUrl, autoRotate }) {
-  if (!modelUrl) {
+  // Pas d'URL → état vide, pas de crash
+  if (!modelUrl || modelUrl.trim() === '') {
     return (
       <div className="empty-viewer">
         <p>Importe un GLB Elden Ring pour commencer.</p>
@@ -87,51 +119,60 @@ function Viewer({ modelUrl, autoRotate }) {
   }
 
   return (
-    <Canvas
-      className="viewer-canvas"
-      camera={{ position: [0, 1.6, 5], fov: 40 }}
-      shadows
-      dpr={[1, 2]}
-      gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
-    >
-      <color attach="background" args={['#050608']} />
-      <ambientLight intensity={0.6} />
-      <directionalLight
-        position={[4, 6, 4]}
-        intensity={3}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
-      <directionalLight position={[-4, 3, -3]} intensity={1.4} color="#8fb5ff" />
-      <pointLight position={[0, 2, 5]} intensity={0.8} color="#ffddb0" />
-
-      <Suspense fallback={null}>
-        <EldenModel url={modelUrl} />
-        <Environment preset="night" />
-      </Suspense>
-
-      <mesh
-        receiveShadow
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -1.1, 0]}
+    <ViewerErrorBoundary key={modelUrl}>
+      <Canvas
+        className="viewer-canvas"
+        camera={{ position: [0, 1.6, 5], fov: 40 }}
+        shadows
+        dpr={[1, 2]}
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
       >
-        <circleGeometry args={[4.5, 64]} />
-        <meshStandardMaterial color="#111118" roughness={0.85} metalness={0.2} />
-      </mesh>
+        <color attach="background" args={['#050608']} />
+        <ambientLight intensity={0.6} />
+        <directionalLight
+          position={[4, 6, 4]}
+          intensity={3}
+          castShadow
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+        />
+        <directionalLight position={[-4, 3, -3]} intensity={1.4} color="#8fb5ff" />
+        <pointLight position={[0, 2, 5]} intensity={0.8} color="#ffddb0" />
 
-      <OrbitControls
-        enablePan
-        enableZoom
-        enableDamping
-        dampingFactor={0.08}
-        minDistance={2.5}
-        maxDistance={10}
-        target={[0, 1, 0]}
-        autoRotate={autoRotate}
-        autoRotateSpeed={0.8}
-      />
-    </Canvas>
+        <Suspense
+          fallback={
+            <mesh>
+              <boxGeometry args={[0.1, 0.1, 0.1]} />
+              <meshBasicMaterial transparent opacity={0} />
+            </mesh>
+          }
+        >
+          <EldenModel url={modelUrl} />
+          <Environment preset="night" />
+        </Suspense>
+
+        <mesh
+          receiveShadow
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, -1.1, 0]}
+        >
+          <circleGeometry args={[4.5, 64]} />
+          <meshStandardMaterial color="#111118" roughness={0.85} metalness={0.2} />
+        </mesh>
+
+        <OrbitControls
+          enablePan
+          enableZoom
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={2.5}
+          maxDistance={10}
+          target={[0, 1, 0]}
+          autoRotate={autoRotate}
+          autoRotateSpeed={0.8}
+        />
+      </Canvas>
+    </ViewerErrorBoundary>
   )
 }
 
@@ -175,10 +216,11 @@ function App() {
             const name = entry.name || 'Inconnu'
             const info = { ...DEFAULT_INFO, ...(entry.info || {}), title: entry.info?.title || name }
 
+            // URL du modèle : priorité à remoteUrl, sinon modelPath, sinon vide
             let modelUrl = ''
-            if (entry.remoteUrl) {
+            if (entry.remoteUrl && entry.remoteUrl.trim() !== '' && !entry.remoteUrl.startsWith('REMPLACE')) {
               modelUrl = entry.remoteUrl
-            } else if (entry.modelPath) {
+            } else if (entry.modelPath && entry.modelPath.trim() !== '') {
               modelUrl = `${import.meta.env.BASE_URL}${entry.modelPath.replace(/^\//, '')}`
             }
 
@@ -195,7 +237,7 @@ function App() {
                 id,
                 name,
                 url: modelUrl,
-                source: entry.remoteUrl ? 'remote' : 'builtin',
+                source: entry.remoteUrl && modelUrl ? 'remote' : 'builtin',
                 info,
               })
             }
@@ -209,25 +251,13 @@ function App() {
     }
 
     if (!cancelled) loadLibrary()
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   const addModel = useCallback((name, url, source) => {
     setModels((current) => {
       const id = `${Date.now()}-${current.length}`
-      const base = {
-        id,
-        name,
-        url,
-        source,
-        info: {
-          ...DEFAULT_INFO,
-          title: name,
-        },
-      }
+      const base = { id, name, url, source, info: { ...DEFAULT_INFO, title: name } }
       const next = [...current, base]
       if (!selectedId) setSelectedId(id)
       return next
@@ -238,14 +268,7 @@ function App() {
     setModels((current) =>
       current.map((model) =>
         model.id === id
-          ? {
-              ...model,
-              info: {
-                ...DEFAULT_INFO,
-                ...(model.info || {}),
-                ...patch,
-              },
-            }
+          ? { ...model, info: { ...DEFAULT_INFO, ...(model.info || {}), ...patch } }
           : model,
       ),
     )
@@ -253,7 +276,6 @@ function App() {
 
   const handleFiles = useCallback((files) => {
     if (!files?.length) return
-
     Array.from(files).forEach((file) => {
       const lower = file.name.toLowerCase()
       if (!lower.endsWith('.glb') && !lower.endsWith('.gltf')) return
@@ -287,7 +309,6 @@ function App() {
     setRemoteUrl('')
   }, [addModel, remoteUrl])
 
-  // Export JSON de la bibliothèque
   const handleExportLibrary = useCallback(() => {
     const payload = models.map((model) => ({
       id: model.id,
@@ -296,10 +317,7 @@ function App() {
       url: model.source === 'remote' ? model.url : '',
       info: ensureInfo(model),
     }))
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: 'application/json',
-    })
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -308,7 +326,6 @@ function App() {
     URL.revokeObjectURL(url)
   }, [models])
 
-  // Import JSON pour enrichir/partager la bibliothèque
   const handleImportLibrary = useCallback((file) => {
     if (!file) return
     const reader = new FileReader()
@@ -319,7 +336,6 @@ function App() {
         setModels((current) => {
           const byName = new Map(current.map((m) => [m.name, m]))
           const merged = [...current]
-
           parsed.forEach((entry) => {
             if (!entry || typeof entry !== 'object') return
             const name = entry.name || 'Inconnu'
@@ -336,12 +352,9 @@ function App() {
               })
             }
           })
-
           return [...merged]
         })
-      } catch {
-        // ignore invalid JSON
-      }
+      } catch { /* ignore */ }
     }
     reader.readAsText(file)
   }, [])
@@ -363,8 +376,7 @@ function App() {
           <h2>Modèles</h2>
           {models.length === 0 && (
             <p className="sidebar-empty">
-              Aucun modèle chargé.
-              <br />
+              Aucun modèle chargé.<br />
               Commence par déposer un fichier GLB dans la zone centrale.
             </p>
           )}
@@ -378,7 +390,9 @@ function App() {
                 >
                   <span className="model-name">{model.info?.title || model.name}</span>
                   <span className="model-source">
-                    {model.source === 'remote' ? 'URL' : model.source === 'builtin' ? 'Bibliothèque' : 'Upload'}
+                    {model.source === 'remote' ? 'URL'
+                      : model.source === 'builtin' ? 'Bibliothèque'
+                      : 'Upload'}
                   </span>
                 </button>
               </li>
@@ -406,10 +420,7 @@ function App() {
               <input
                 type="file"
                 accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
-                onChange={(event) => {
-                  handleFiles(event.target.files)
-                  event.target.value = ''
-                }}
+                onChange={(event) => { handleFiles(event.target.files); event.target.value = '' }}
               />
             </label>
 
@@ -487,37 +498,25 @@ function App() {
                 <h3>Résumé & zone</h3>
                 <div className="info-field">
                   <label>Nom / titre affiché</label>
-                  <input
-                    type="text"
-                    value={selectedInfo.title}
-                    onChange={(event) => updateModelInfo(selectedModel.id, { title: event.target.value })}
-                  />
+                  <input type="text" value={selectedInfo.title}
+                    onChange={(e) => updateModelInfo(selectedModel.id, { title: e.target.value })} />
                 </div>
                 <div className="info-field">
                   <label>Rôle (boss principal, shardbearer, PNJ, esprit...)</label>
-                  <input
-                    type="text"
-                    value={selectedInfo.role}
-                    onChange={(event) => updateModelInfo(selectedModel.id, { role: event.target.value })}
-                  />
+                  <input type="text" value={selectedInfo.role}
+                    onChange={(e) => updateModelInfo(selectedModel.id, { role: e.target.value })} />
                 </div>
                 <div className="info-field inline">
                   <div>
                     <label>Zone / région</label>
-                    <input
-                      type="text"
-                      value={selectedInfo.area}
-                      onChange={(event) => updateModelInfo(selectedModel.id, { area: event.target.value })}
-                    />
+                    <input type="text" value={selectedInfo.area}
+                      onChange={(e) => updateModelInfo(selectedModel.id, { area: e.target.value })} />
                   </div>
                   <div>
                     <label>Niveau recommandé</label>
-                    <input
-                      type="text"
-                      value={selectedInfo.recommendedLevel}
-                      onChange={(event) => updateModelInfo(selectedModel.id, { recommendedLevel: event.target.value })}
-                      placeholder="ex : 120+"
-                    />
+                    <input type="text" value={selectedInfo.recommendedLevel}
+                      onChange={(e) => updateModelInfo(selectedModel.id, { recommendedLevel: e.target.value })}
+                      placeholder="ex : 120+" />
                   </div>
                 </div>
               </section>
@@ -526,20 +525,14 @@ function App() {
                 <h3>Style de combat</h3>
                 <div className="info-field">
                   <label>Style de combat (agressif, distance, magie, status...)</label>
-                  <textarea
-                    rows={2}
-                    value={selectedInfo.fightStyle}
-                    onChange={(event) => updateModelInfo(selectedModel.id, { fightStyle: event.target.value })}
-                  />
+                  <textarea rows={2} value={selectedInfo.fightStyle}
+                    onChange={(e) => updateModelInfo(selectedModel.id, { fightStyle: e.target.value })} />
                 </div>
                 <div className="info-field">
                   <label>Attaques clés / patterns</label>
-                  <textarea
-                    rows={3}
-                    value={selectedInfo.keyMoves}
-                    onChange={(event) => updateModelInfo(selectedModel.id, { keyMoves: event.target.value })}
-                    placeholder="Liste les attaques à connaître, les phases, les enchaînements dangereux..."
-                  />
+                  <textarea rows={3} value={selectedInfo.keyMoves}
+                    onChange={(e) => updateModelInfo(selectedModel.id, { keyMoves: e.target.value })}
+                    placeholder="Liste les attaques à connaître, les phases, les enchaînements dangereux..." />
                 </div>
               </section>
 
@@ -547,21 +540,15 @@ function App() {
                 <h3>Tips & builds</h3>
                 <div className="info-field">
                   <label>Stratégies recommandées</label>
-                  <textarea
-                    rows={3}
-                    value={selectedInfo.strategyNotes}
-                    onChange={(event) => updateModelInfo(selectedModel.id, { strategyNotes: event.target.value })}
-                    placeholder="Conseils de positionnement, invocs utiles, objets clefs, fenêtres pour punir..."
-                  />
+                  <textarea rows={3} value={selectedInfo.strategyNotes}
+                    onChange={(e) => updateModelInfo(selectedModel.id, { strategyNotes: e.target.value })}
+                    placeholder="Conseils de positionnement, invocs utiles, objets clefs, fenêtres pour punir..." />
                 </div>
                 <div className="info-field">
                   <label>Tags (séparés par des virgules)</label>
-                  <input
-                    type="text"
-                    value={selectedInfo.tags}
-                    onChange={(event) => updateModelInfo(selectedModel.id, { tags: event.target.value })}
-                    placeholder="ex : shardbearer, saignement, late game"
-                  />
+                  <input type="text" value={selectedInfo.tags}
+                    onChange={(e) => updateModelInfo(selectedModel.id, { tags: e.target.value })}
+                    placeholder="ex : shardbearer, saignement, late game" />
                 </div>
                 {(() => {
                   const tagList = (selectedInfo.tags || '')
