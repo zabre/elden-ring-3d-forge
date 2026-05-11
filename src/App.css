@@ -1,0 +1,275 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top, #18181b 0, #020617 45%, #000 100%);
+  color: #e4e4e7;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  padding: 0.9rem 1.6rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.96), rgba(24, 24, 27, 0.96));
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.6);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #facc15;
+}
+
+.app-header p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 260px;
+  border-right: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 0.9rem 0.9rem 0.6rem;
+  background: radial-gradient(circle at top left, #020617, #020617 45%, #020617 100%);
+}
+
+.sidebar h2 {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+.sidebar-empty {
+  margin: 0.4rem 0 0.8rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.model-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+}
+
+.model-item {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  padding: 0.45rem 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.7);
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-align: left;
+  transition: border-color 120ms ease, background 120ms ease, transform 80ms ease;
+}
+
+.model-item:hover {
+  border-color: rgba(250, 204, 21, 0.4);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.model-item.active {
+  border-color: #facc15;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.3);
+  background: radial-gradient(circle at top left, #1d283a, #020617 70%);
+}
+
+.model-name {
+  flex: 1;
+  margin-right: 0.6rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-source {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.18);
+  color: #a5f3fc;
+}
+
+.main-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.drop-zone {
+  flex: 1;
+  position: relative;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  background: radial-gradient(circle at top, #020617 0, #020617 40%, #000 100%);
+}
+
+.drop-zone.dragging::before {
+  content: '';
+  position: absolute;
+  inset: 0.3rem;
+  border-radius: 1.2rem;
+  border: 1.5px dashed rgba(250, 204, 21, 0.8);
+  pointer-events: none;
+}
+
+.viewer-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.empty-viewer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.drop-zone-overlay {
+  position: absolute;
+  inset: auto 1.5rem 1.4rem 1.5rem;
+  pointer-events: none;
+  text-align: center;
+}
+
+.drop-zone-overlay p {
+  margin: 0;
+}
+
+.drop-zone-overlay .hint {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.controls-bar {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.7rem 1.3rem;
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9));
+}
+
+.file-input {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: radial-gradient(circle at top left, #1f2937, #020617 80%);
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #e5e7eb;
+}
+
+.file-input input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.remote-input {
+  flex: 1;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.remote-input input {
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e5e7eb;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.remote-input input::placeholder {
+  color: #6b7280;
+}
+
+.remote-input button {
+  border-radius: 999px;
+  border: 1px solid rgba(250, 204, 21, 0.7);
+  background: radial-gradient(circle at top, #4b5563, #111827 70%);
+  color: #facc15;
+  padding: 0.42rem 0.85rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.remote-input button:hover {
+  filter: brightness(1.05);
+}
+
+.app-footer {
+  padding: 0.45rem 1.3rem 0.7rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.9);
+  background: radial-gradient(circle at bottom, #020617, #020617 60%, #000 100%);
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    display: none;
+  }
+
+  .controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .remote-input {
+    flex-direction: column;
+  }
+
+  .remote-input button {
+    width: 100%;
+  }
+}
