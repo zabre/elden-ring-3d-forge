@@ -1,20 +1,254 @@
 [
   {
-    "id": "malenia",
-    "name": "Malenia, Blade of Miquella",
-    "modelPath": "",
-    "remoteUrl": "REMPLACE_PAR_URL_DRIVE_DIRECTE",
+    "id": "margit",
+    "name": "Margit, the Fell Omen",
+    "modelPath": "models/margit.glb",
+    "remoteUrl": "",
     "info": {
-      "title": "Malenia, Blade of Miquella",
+      "title": "Margit, the Fell Omen",
+      "role": "Boss obligatoire d'accès à Stormveil",
+      "area": "Stormhill",
+      "affiliation": "Omen / Leyndell",
+      "difficulty": 3,
+      "recommendedLevel": "20–30",
+      "fightStyle": "Boss très punitif en début de jeu, basé sur des timings retardés, une bonne portée et des dagues sacrées à distance. Il alterne pression mêlée et contres rapides pour piéger les roulades précoces.",
+      "keyMoves": "Combos de bâton retardés, dagues lumineuses à distance, marteau spectral, longs enchaînements avec délais, saut écrasant.",
+      "strategyNotes": "Attends la fin réelle de ses animations avant d'esquiver, reste à moyenne portée pour lire ses ouvertures et profite des fenêtres après ses sauts lourds. Les invocations et les builds à stagger simplifient fortement le combat.",
+      "tags": "mandatory, early game, delayed attacks, melee, gatekeeper"
+    }
+  },
+  {
+    "id": "godrick",
+    "name": "Godrick the Grafted",
+    "modelPath": "models/godrick.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Godrick the Grafted",
       "role": "Shardbearer boss",
-      "area": "Elphael, Brace of the Haligtree",
-      "affiliation": "Haligtree / Miquella",
+      "area": "Stormveil Castle",
+      "affiliation": "Golden Lineage",
+      "difficulty": 3,
+      "recommendedLevel": "30–40",
+      "fightStyle": "Boss de mêlée imposant avec larges balayages, tornades et forte couverture frontale. Sa seconde phase ajoute le feu du dragon greffé et accentue la pression de zone.",
+      "keyMoves": "Combos de hache, tornade, roulades offensives, slam, souffle de feu du dragon, cônes de flammes, attaques tournoyantes.",
+      "strategyNotes": "Colle son flanc après ses grands balayages et punis surtout les attaques de fin de combo. En phase 2, esquive sur le côté du souffle de feu plutôt que de reculer, et vise le stagger avec attaques lourdes ou saignement.",
+      "tags": "shardbearer, mandatory, early game, fire, melee"
+    }
+  },
+  {
+    "id": "red-wolf-of-radagon",
+    "name": "Red Wolf of Radagon",
+    "modelPath": "models/red-wolf-of-radagon.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Red Wolf of Radagon",
+      "role": "Boss obligatoire de progression académique",
+      "area": "Academy of Raya Lucaria",
+      "affiliation": "Raya Lucaria / Radagon",
+      "difficulty": 2,
+      "recommendedLevel": "40–50",
+      "fightStyle": "Boss très mobile qui combine bonds rapides, morsures et sorcelleries à l'épée volante. Il laisse peu de fenêtres mais encaisse relativement peu.",
+      "keyMoves": "Sauts latéraux, morsures, épée magique volante, projectiles glintstone, dashs rapides, combo de lame magique.",
+      "strategyNotes": "Reste agressif pour écourter le combat, car ses points de vie sont modestes. Les attaques rapides, les sorts instantanés et le lock-on discipliné suffisent souvent, tandis que les casts lents sont trop risqués.",
+      "tags": "mandatory, academy, magic, agile, mid game"
+    }
+  },
+  {
+    "id": "rennala",
+    "name": "Rennala, Queen of the Full Moon",
+    "modelPath": "models/rennala.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Rennala, Queen of the Full Moon",
+      "role": "Shardbearer boss",
+      "area": "Academy of Raya Lucaria",
+      "affiliation": "Carian Royal Family / Raya Lucaria",
+      "difficulty": 2,
+      "recommendedLevel": "45–60",
+      "fightStyle": "Combat en deux phases : puzzle très simple puis duel de mage à grande distance avec invocations et sorcelleries lunaires. Elle est fragile mais dangereuse si on lui laisse l'initiative.",
+      "keyMoves": "Phase 1 avec étudiants et aura dorée, explosion de reprise, Comet Azur-like bursts, Full Moon, éclats glintstone, invocations temporaires.",
+      "strategyNotes": "Termine vite la première phase puis sprint vers elle en seconde pour casser son rythme de lanceuse de sorts. Les dégâts physiques, la pression constante et les interruptions de cast sont plus utiles que les builds purement magiques.",
+      "tags": "shardbearer, mandatory, magic, academy, mid game"
+    }
+  },
+  {
+    "id": "draconic-tree-sentinel",
+    "name": "Draconic Tree Sentinel",
+    "modelPath": "models/draconic-tree-sentinel.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Draconic Tree Sentinel",
+      "role": "Boss obligatoire d'accès à Leyndell",
+      "area": "Capital Outskirts",
+      "affiliation": "Leyndell",
+      "difficulty": 3,
+      "recommendedLevel": "70–90",
+      "fightStyle": "Cavalier lourd mêlant coups de hallebarde, bouclier et foudre à moyenne portée. Le combat demande une bonne lecture du tempo et une gestion propre de l'espace autour de la monture.",
+      "keyMoves": "Balayages de hallebarde, coups de bouclier, boules de feu, foudre ciblée, slam électrique, charges montées.",
+      "strategyNotes": "Reste mobile sur ses flancs et punis après les grosses animations de hallebarde ou les lancers de foudre. La résistance à la foudre aide, mais le plus important est d'éviter la gourmandise quand il enchaîne bouclier et arme.",
+      "tags": "mandatory, lightning, mounted, mid game, leyndell"
+    }
+  },
+  {
+    "id": "godfrey-golden-shade",
+    "name": "Godfrey, First Elden Lord (Golden Shade)",
+    "modelPath": "models/godfrey-golden-shade.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Godfrey, First Elden Lord (Golden Shade)",
+      "role": "Boss obligatoire de Leyndell",
+      "area": "Leyndell, Royal Capital",
+      "affiliation": "Golden Lineage / Leyndell",
+      "difficulty": 3,
+      "recommendedLevel": "75–90",
+      "fightStyle": "Boss de puissance pure avec hache, stomps et très gros contrôle frontal. Son moveset est lisible mais punit fortement les erreurs de placement et les soins trop proches.",
+      "keyMoves": "Balayages de hache, stomp avec onde de choc, combos retardés, slam vertical, avancées agressives.",
+      "strategyNotes": "Saute plusieurs de ses stomp AoE au lieu de rouler systématiquement et cherche les punitions courtes après les slams. Les builds de posture marchent bien, mais il faut respecter ses délais de récupération trompeurs.",
+      "tags": "mandatory, leyndell, physical, stomp, mid late game"
+    }
+  },
+  {
+    "id": "morgott",
+    "name": "Morgott, the Omen King",
+    "modelPath": "models/morgott.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Morgott, the Omen King",
+      "role": "Boss obligatoire majeur",
+      "area": "Leyndell, Royal Capital",
+      "affiliation": "Omen / Golden Lineage",
+      "difficulty": 4,
+      "recommendedLevel": "80–100",
+      "fightStyle": "Boss rapide et technique qui mélange attaques sacrées, longues chaînes de mêlée et projectiles spectraux. Il punit les soins à distance moyenne et demande des esquives très propres.",
+      "keyMoves": "Dagues sacrées, lance et marteau spectraux, combos longs de canne/épée, dashs, pluie de lames, attaques retardées.",
+      "strategyNotes": "Reste discipliné et ne punis qu'après les grosses fins de chaîne ou ses sauts bien identifiés. Le saignement, les armes rapides et une bonne gestion de l'endurance sont excellents, tandis que les attaques lentes se font souvent interrompre.",
+      "tags": "mandatory, omen, holy, agile, late mid game"
+    }
+  },
+  {
+    "id": "fire-giant",
+    "name": "Fire Giant",
+    "modelPath": "models/fire-giant.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Fire Giant",
+      "role": "Boss obligatoire de transition vers la fin de jeu",
+      "area": "Mountaintops of the Giants",
+      "affiliation": "Giants / Fell God",
+      "difficulty": 4,
+      "recommendedLevel": "95–110",
+      "fightStyle": "Boss colossal à très haute endurance, dominé par les AoE, les roulades massives et le feu à grande portée. Le combat est surtout une épreuve de positionnement et de patience.",
+      "keyMoves": "Plaques de neige, roulades géantes, coups de bouclier, projectiles et geysers de feu, pluie de flammes, seconde phase avec boule de feu et grands souffles.",
+      "strategyNotes": "En première phase, cible prioritairement sa jambe blessée pour écourter le combat. En seconde, joue sous ou derrière lui quand c'est sûr, surveille les zones de feu au sol et privilégie les dégâts soutenus plutôt qu'un burst risqué.",
+      "tags": "mandatory, giant, fire, late game, endurance"
+    }
+  },
+  {
+    "id": "godskin-duo",
+    "name": "Godskin Duo",
+    "modelPath": "models/godskin-duo.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Godskin Duo",
+      "role": "Boss obligatoire en duo",
+      "area": "Crumbling Farum Azula",
+      "affiliation": "Godskin Apostles",
+      "difficulty": 4,
+      "recommendedLevel": "100–120",
+      "fightStyle": "Combat de duo très oppressant qui alterne pression rapprochée, projectiles noirs, allonge variable et résurrections jusqu'à épuisement de la barre commune. Le contrôle de l'espace est plus important que le DPS brut.",
+      "keyMoves": "Fireballs noires, thrusts rapides, roulade du Noble, allonge étirable de l'Apostle, combos synchronisés, résurrections successives.",
+      "strategyNotes": "Utilise les piliers pour casser les lignes d'attaque et isole une cible à la fois. Le sommeil trivialise une partie du combat, et les invocations tanky sont particulièrement efficaces pour rétablir le tempo.",
+      "tags": "mandatory, duo, black flame, late game, sleep"
+    }
+  },
+  {
+    "id": "maliketh",
+    "name": "Maliketh, the Black Blade",
+    "modelPath": "models/maliketh.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Maliketh, the Black Blade",
+      "role": "Boss obligatoire majeur",
+      "area": "Crumbling Farum Azula",
+      "affiliation": "Marika / Destined Death",
       "difficulty": 5,
+      "recommendedLevel": "110–130",
+      "fightStyle": "Combat en deux phases : Beast Clergyman met une pression nerveuse au sol, puis Maliketh devient extrêmement mobile avec des bonds acrobatiques et des entailles de Destined Death. Ses attaques réduisent la vie maximale et punissent chaque erreur.",
+      "keyMoves": "Dagues et bestial sling, combos rapides au sol, bonds muraux, vagues d'énergie noire, plunges, entailles de Destined Death, grands arcs aériens.",
+      "strategyNotes": "Apprends d'abord à survivre proprement à Beast Clergyman sans trop consommer de fioles. En phase Maliketh, reste proche après certaines retombées pour punir brièvement, évite de paniquer face à sa mobilité et cherche des fenêtres courtes avec arme rapide ou burst instantané.",
+      "tags": "mandatory, destined death, late game, agile, black blade"
+    }
+  },
+  {
+    "id": "sir-gideon-ofnir",
+    "name": "Sir Gideon Ofnir, the All-Knowing",
+    "modelPath": "models/sir-gideon-ofnir.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Sir Gideon Ofnir, the All-Knowing",
+      "role": "Boss obligatoire de l'Ashen Capital",
+      "area": "Leyndell, Ashen Capital",
+      "affiliation": "Roundtable Hold",
+      "difficulty": 2,
+      "recommendedLevel": "110–125",
+      "fightStyle": "Humanoïde lanceur de sorts, dangereux surtout si on lui laisse l'espace pour enchaîner ses incantations et sorcelleries. Sa défense est faible et il souffre sous pression continue.",
+      "keyMoves": "Comet-like sorceries, Rings of Light, projectiles variés, blasts sacrés, sorts de zone, reculs de sécurité.",
+      "strategyNotes": "Rush immédiat dès le début pour couper son script et éviter qu'il installe sa distance. Les armes rapides, le stagger, le silence par pression et les invocations agressives le neutralisent très facilement.",
+      "tags": "mandatory, caster, humanoid, late game, easy"
+    }
+  },
+  {
+    "id": "hoarah-loux",
+    "name": "Hoarah Loux, Warrior",
+    "modelPath": "models/hoarah-loux.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Hoarah Loux, Warrior",
+      "role": "Boss obligatoire majeur de fin de jeu",
+      "area": "Leyndell, Ashen Capital",
+      "affiliation": "Godfrey / Golden Lineage",
+      "difficulty": 5,
+      "recommendedLevel": "100–120",
+      "fightStyle": "Combat en deux temps : Godfrey contrôle l'espace avec hache et stomp, puis Hoarah Loux bascule sur une lutte ultra agressive au corps à corps. La seconde phase réduit drastiquement les fenêtres de soin avec grabs, rushs et AoE terrestres.",
+      "keyMoves": "Combos de hache, stomps en chaîne, ondes de choc, transition à mi-vie, grabs et projections, sauts écrasants, rushs rapides, longs enchaînements de poings.",
+      "strategyNotes": "Saute les stomps quand c'est possible et punis surtout les slams les plus engagés. En phase 2, esquive latéralement ses grabs, garde ton calme sous pression et privilégie des punitions courtes avec builds à saignement, stagger ou invocation robuste.",
+      "tags": "mandatory, late game, grapples, stomp, physical"
+    }
+  },
+  {
+    "id": "radagon",
+    "name": "Radagon of the Golden Order",
+    "modelPath": "models/radagon.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Radagon of the Golden Order",
+      "role": "Boss final phase 1",
+      "area": "Elden Throne",
+      "affiliation": "Golden Order / Marika",
+      "difficulty": 4,
       "recommendedLevel": "120+",
-      "fightStyle": "Boss extr\u00eamement agressif, focalis\u00e9 sur les combos rapides, la mobilit\u00e9 et l'accumulation de saignement.",
-      "keyMoves": "Waterfowl Dance, charges plongeantes, attaques rapides \u00e0 l'\u00e9p\u00e9e, seconde phase Scarlet Aeonia.",
-      "strategyNotes": "Construire de la r\u00e9sistance au saignement, privil\u00e9gier des armes \u00e0 port\u00e9e ou du burst magique, utiliser les invocations pour g\u00e9rer sa pression constante.",
-      "tags": "shardbearer, late game, bleed, melee"
+      "fightStyle": "Boss final très explosif, basé sur des combos sacrés, téléportations courtes et AoE lumineuses punitives. Il force une exécution propre avant même la seconde phase du combat final.",
+      "keyMoves": "Téléportation, marteau sacré, lancers de foudre/lumière, triples slams AoE, thrusts, explosions sacrées retardées.",
+      "strategyNotes": "Les résistances sacrées aident beaucoup et les dégâts physiques purs sont généralement plus fiables. Évite de surpunir après un seul coup esquivé, car plusieurs attaques ont des suites retardées conçues pour attraper la gourmandise.",
+      "tags": "mandatory, final boss, holy, late game, phase one"
+    }
+  },
+  {
+    "id": "elden-beast",
+    "name": "Elden Beast",
+    "modelPath": "models/elden-beast.glb",
+    "remoteUrl": "",
+    "info": {
+      "title": "Elden Beast",
+      "role": "Boss final phase 2",
+      "area": "Elden Throne",
+      "affiliation": "Greater Will / Elden Ring",
+      "difficulty": 4,
+      "recommendedLevel": "120+",
+      "fightStyle": "Boss final cosmique à longue portée, avec immense mobilité, grandes arcs sacrés et projectiles traquants. Le défi vient autant du positionnement et de la poursuite que de l'esquive pure.",
+      "keyMoves": "Elden Stars, arcs sacrés, sword beams, anneaux sacrés, souffle doré, plongées lointaines, explosions de zone, combos d'épée géante.",
+      "strategyNotes": "Conserve de l'endurance pour rattraper ses repositionnements et apprends à naviguer ses projectiles plutôt qu'à tout tank. Les résistances sacrées sont excellentes, tandis que les builds dépendants des statuts perdent souvent en efficacité sur cette phase.",
+      "tags": "mandatory, final boss, holy, cosmic, late game"
     }
   }
 ]
