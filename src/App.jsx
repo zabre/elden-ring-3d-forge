@@ -4,6 +4,7 @@ import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 
 const STORAGE_KEY = 'er3d-library-v1'
+const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
 
 function loadStoredModels() {
   if (typeof window === 'undefined') return []
@@ -76,7 +77,7 @@ function EldenModel({ url }) {
   )
 }
 
-function Viewer({ modelUrl }) {
+function Viewer({ modelUrl, autoRotate }) {
   if (!modelUrl) {
     return (
       <div className="empty-viewer">
@@ -127,6 +128,8 @@ function Viewer({ modelUrl }) {
         minDistance={2.5}
         maxDistance={10}
         target={[0, 1, 0]}
+        autoRotate={autoRotate}
+        autoRotateSpeed={0.8}
       />
     </Canvas>
   )
@@ -137,6 +140,7 @@ function App() {
   const [selectedId, setSelectedId] = useState(null)
   const [remoteUrl, setRemoteUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [autoRotate, setAutoRotate] = useState(true)
 
   const selectedModel = models.find((m) => m.id === selectedId) || models[0]
   const selectedInfo = selectedModel ? ensureInfo(selectedModel) : null
@@ -149,6 +153,67 @@ function App() {
       // ignore
     }
   }, [models])
+
+  // Chargement de la bibliothèque JSON au démarrage
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadLibrary() {
+      try {
+        const response = await fetch(LIBRARY_URL)
+        if (!response.ok) return
+        const data = await response.json()
+        if (!Array.isArray(data)) return
+
+        setModels((current) => {
+          const byId = new Map(current.map((m) => [m.id, m]))
+          const merged = [...current]
+
+          data.forEach((entry, index) => {
+            if (!entry || typeof entry !== 'object') return
+            const id = entry.id || `builtin-${index}`
+            const name = entry.name || 'Inconnu'
+            const info = { ...DEFAULT_INFO, ...(entry.info || {}), title: entry.info?.title || name }
+
+            let modelUrl = ''
+            if (entry.remoteUrl) {
+              modelUrl = entry.remoteUrl
+            } else if (entry.modelPath) {
+              modelUrl = `${import.meta.env.BASE_URL}${entry.modelPath.replace(/^\//, '')}`
+            }
+
+            const existing = byId.get(id) || merged.find((m) => m.name === name)
+
+            if (existing) {
+              existing.info = { ...ensureInfo(existing), ...info }
+              if (!existing.url && modelUrl) {
+                existing.url = modelUrl
+                existing.source = entry.remoteUrl ? 'remote' : 'builtin'
+              }
+            } else {
+              merged.push({
+                id,
+                name,
+                url: modelUrl,
+                source: entry.remoteUrl ? 'remote' : 'builtin',
+                info,
+              })
+            }
+          })
+
+          return merged
+        })
+      } catch {
+        // pas grave si le JSON n'existe pas encore
+      }
+    }
+
+    if (!cancelled) loadLibrary()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const addModel = useCallback((name, url, source) => {
     setModels((current) => {
@@ -312,7 +377,9 @@ function App() {
                   onClick={() => setSelectedId(model.id)}
                 >
                   <span className="model-name">{model.info?.title || model.name}</span>
-                  <span className="model-source">{model.source === 'remote' ? 'URL' : 'Upload'}</span>
+                  <span className="model-source">
+                    {model.source === 'remote' ? 'URL' : model.source === 'builtin' ? 'Bibliothèque' : 'Upload'}
+                  </span>
                 </button>
               </li>
             ))}
@@ -326,7 +393,7 @@ function App() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <Viewer modelUrl={selectedModel?.url} />
+            <Viewer modelUrl={selectedModel?.url} autoRotate={autoRotate} />
             <div className="drop-zone-overlay">
               <p>Glisse-dépose ici un fichier .glb / .gltf Elden Ring</p>
               <p className="hint">ou utilise les boutons ci-dessous pour importer.</p>
@@ -374,6 +441,13 @@ function App() {
                   }}
                 />
               </label>
+              <button
+                type="button"
+                className="rotate-toggle"
+                onClick={() => setAutoRotate((prev) => !prev)}
+              >
+                {autoRotate ? 'Arrêter la rotation' : 'Activer la rotation'}
+              </button>
             </div>
           </div>
         </main>
@@ -489,6 +563,19 @@ function App() {
                     placeholder="ex : shardbearer, saignement, late game"
                   />
                 </div>
+                {(() => {
+                  const tagList = (selectedInfo.tags || '')
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean)
+                  return tagList.length > 0 ? (
+                    <div className="tag-list">
+                      {tagList.map((tag) => (
+                        <span key={tag} className="tag-pill">{tag}</span>
+                      ))}
+                    </div>
+                  ) : null
+                })()}
               </section>
             </>
           )}
