@@ -1,7 +1,40 @@
-import React, { Suspense, useCallback, useMemo, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+
+const STORAGE_KEY = 'er3d-library-v1'
+
+function loadStoredModels() {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+  } catch {
+    return []
+  }
+}
+
+const DEFAULT_INFO = {
+  title: '',
+  role: '',
+  area: '',
+  affiliation: '',
+  difficulty: 3,
+  recommendedLevel: '',
+  fightStyle: '',
+  keyMoves: '',
+  strategyNotes: '',
+  tags: '',
+}
+
+function ensureInfo(model) {
+  if (!model) return DEFAULT_INFO
+  return { ...DEFAULT_INFO, ...(model.info || {}) }
+}
 
 function EldenModel({ url }) {
   const gltf = useGLTF(url)
@@ -99,24 +132,59 @@ function Viewer({ modelUrl }) {
   )
 }
 
-const initialBosses = []
-
 function App() {
-  const [models, setModels] = useState(initialBosses)
+  const [models, setModels] = useState(() => loadStoredModels())
   const [selectedId, setSelectedId] = useState(null)
   const [remoteUrl, setRemoteUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
 
   const selectedModel = models.find((m) => m.id === selectedId) || models[0]
+  const selectedInfo = selectedModel ? ensureInfo(selectedModel) : null
+
+  // Persistance locale
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(models))
+    } catch {
+      // ignore
+    }
+  }, [models])
 
   const addModel = useCallback((name, url, source) => {
     setModels((current) => {
       const id = `${Date.now()}-${current.length}`
-      const next = [...current, { id, name, url, source }]
+      const base = {
+        id,
+        name,
+        url,
+        source,
+        info: {
+          ...DEFAULT_INFO,
+          title: name,
+        },
+      }
+      const next = [...current, base]
       if (!selectedId) setSelectedId(id)
       return next
     })
   }, [selectedId])
+
+  const updateModelInfo = useCallback((id, patch) => {
+    setModels((current) =>
+      current.map((model) =>
+        model.id === id
+          ? {
+              ...model,
+              info: {
+                ...DEFAULT_INFO,
+                ...(model.info || {}),
+                ...patch,
+              },
+            }
+          : model,
+      ),
+    )
+  }, [])
 
   const handleFiles = useCallback((files) => {
     if (!files?.length) return
@@ -149,16 +217,79 @@ function App() {
   const handleRemoteAdd = useCallback(() => {
     const url = remoteUrl.trim()
     if (!url) return
-    addModel(url.split('/').slice(-1)[0] || 'Remote GLB', url, 'remote')
+    const nameFromUrl = url.split('/').slice(-1)[0] || 'Remote GLB'
+    addModel(nameFromUrl, url, 'remote')
     setRemoteUrl('')
   }, [addModel, remoteUrl])
+
+  // Export JSON de la bibliothèque
+  const handleExportLibrary = useCallback(() => {
+    const payload = models.map((model) => ({
+      id: model.id,
+      name: model.name,
+      source: model.source,
+      url: model.source === 'remote' ? model.url : '',
+      info: ensureInfo(model),
+    }))
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'elden-ring-3d-library.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [models])
+
+  // Import JSON pour enrichir/partager la bibliothèque
+  const handleImportLibrary = useCallback((file) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result)
+        if (!Array.isArray(parsed)) return
+        setModels((current) => {
+          const byName = new Map(current.map((m) => [m.name, m]))
+          const merged = [...current]
+
+          parsed.forEach((entry) => {
+            if (!entry || typeof entry !== 'object') return
+            const name = entry.name || 'Inconnu'
+            const existing = byName.get(name)
+            if (existing) {
+              existing.info = { ...ensureInfo(existing), ...(entry.info || {}) }
+            } else {
+              merged.push({
+                id: entry.id || `${Date.now()}-${merged.length}`,
+                name,
+                url: entry.url || '',
+                source: entry.source || (entry.url ? 'remote' : 'unknown'),
+                info: { ...DEFAULT_INFO, ...(entry.info || {}), title: entry.info?.title || name },
+              })
+            }
+          })
+
+          return [...merged]
+        })
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+    reader.readAsText(file)
+  }, [])
 
   return (
     <div className="app-shell">
       <header className="app-header">
         <div>
           <h1>Elden Ring 3D Forge</h1>
-          <p>Visualise et explore tes modèles 3D de personnages et boss Elden Ring.</p>
+          <p>
+            Visualise et explore les modèles 3D de personnages et boss Elden Ring.
+            Enrichis la fiche pédagogique pour aider toute la communauté.
+          </p>
         </div>
       </header>
 
@@ -180,7 +311,7 @@ function App() {
                   className={selectedModel?.id === model.id ? 'model-item active' : 'model-item'}
                   onClick={() => setSelectedId(model.id)}
                 >
-                  <span className="model-name">{model.name}</span>
+                  <span className="model-name">{model.info?.title || model.name}</span>
                   <span className="model-source">{model.source === 'remote' ? 'URL' : 'Upload'}</span>
                 </button>
               </li>
@@ -226,13 +357,150 @@ function App() {
                 Ajouter depuis l'URL
               </button>
             </div>
+
+            <div className="library-actions">
+              <button type="button" onClick={handleExportLibrary}>
+                Exporter la bibliothèque
+              </button>
+              <label className="import-label">
+                Importer
+                <input
+                  type="file"
+                  accept="application/json"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) handleImportLibrary(file)
+                    event.target.value = ''
+                  }}
+                />
+              </label>
+            </div>
           </div>
         </main>
+
+        <aside className="info-pane">
+          {!selectedModel && (
+            <div className="info-empty">
+              <p>Sélectionne ou importe un modèle pour éditer sa fiche.</p>
+            </div>
+          )}
+          {selectedModel && selectedInfo && (
+            <>
+              <header className="info-header">
+                <div>
+                  <h2>{selectedInfo.title || selectedModel.name}</h2>
+                  <p>{selectedInfo.role || 'Rôle / type (boss, PNJ, invocateur...)'}</p>
+                </div>
+                <div className="difficulty">
+                  <span>Diff.</span>
+                  <div>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={value <= (selectedInfo.difficulty || 3) ? 'star active' : 'star'}
+                        onClick={() => updateModelInfo(selectedModel.id, { difficulty: value })}
+                        aria-label={`Difficulté ${value}/5`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </header>
+
+              <section className="info-section">
+                <h3>Résumé & zone</h3>
+                <div className="info-field">
+                  <label>Nom / titre affiché</label>
+                  <input
+                    type="text"
+                    value={selectedInfo.title}
+                    onChange={(event) => updateModelInfo(selectedModel.id, { title: event.target.value })}
+                  />
+                </div>
+                <div className="info-field">
+                  <label>Rôle (boss principal, shardbearer, PNJ, esprit...)</label>
+                  <input
+                    type="text"
+                    value={selectedInfo.role}
+                    onChange={(event) => updateModelInfo(selectedModel.id, { role: event.target.value })}
+                  />
+                </div>
+                <div className="info-field inline">
+                  <div>
+                    <label>Zone / région</label>
+                    <input
+                      type="text"
+                      value={selectedInfo.area}
+                      onChange={(event) => updateModelInfo(selectedModel.id, { area: event.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label>Niveau recommandé</label>
+                    <input
+                      type="text"
+                      value={selectedInfo.recommendedLevel}
+                      onChange={(event) => updateModelInfo(selectedModel.id, { recommendedLevel: event.target.value })}
+                      placeholder="ex : 120+"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="info-section">
+                <h3>Style de combat</h3>
+                <div className="info-field">
+                  <label>Style de combat (agressif, distance, magie, status...)</label>
+                  <textarea
+                    rows={2}
+                    value={selectedInfo.fightStyle}
+                    onChange={(event) => updateModelInfo(selectedModel.id, { fightStyle: event.target.value })}
+                  />
+                </div>
+                <div className="info-field">
+                  <label>Attaques clés / patterns</label>
+                  <textarea
+                    rows={3}
+                    value={selectedInfo.keyMoves}
+                    onChange={(event) => updateModelInfo(selectedModel.id, { keyMoves: event.target.value })}
+                    placeholder="Liste les attaques à connaître, les phases, les enchaînements dangereux..."
+                  />
+                </div>
+              </section>
+
+              <section className="info-section">
+                <h3>Tips & builds</h3>
+                <div className="info-field">
+                  <label>Stratégies recommandées</label>
+                  <textarea
+                    rows={3}
+                    value={selectedInfo.strategyNotes}
+                    onChange={(event) => updateModelInfo(selectedModel.id, { strategyNotes: event.target.value })}
+                    placeholder="Conseils de positionnement, invocs utiles, objets clefs, fenêtres pour punir..."
+                  />
+                </div>
+                <div className="info-field">
+                  <label>Tags (séparés par des virgules)</label>
+                  <input
+                    type="text"
+                    value={selectedInfo.tags}
+                    onChange={(event) => updateModelInfo(selectedModel.id, { tags: event.target.value })}
+                    placeholder="ex : shardbearer, saignement, late game"
+                  />
+                </div>
+              </section>
+            </>
+          )}
+        </aside>
       </div>
 
       <footer className="app-footer">
         <span>Projet basé sur React, Three.js et React Three Fiber.</span>
-        <span>Les modèles Elden Ring restent sous ta responsabilité (droits, hébergement, etc.).</span>
+        <span>
+          Les modèles Elden Ring restent sous ta responsabilité (droits, hébergement, etc.).
+          Les fiches sont stockées dans ton navigateur et exportables en JSON.
+        </span>
       </footer>
     </div>
   )
