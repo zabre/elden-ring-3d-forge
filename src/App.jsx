@@ -6,6 +6,33 @@ import * as THREE from 'three'
 const STORAGE_KEY = 'er3d-library-v1'
 const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
 
+// Retourne true si l'URL est une blob: locale (non persistable)
+function isBlobUrl(url) {
+  return typeof url === 'string' && url.startsWith('blob:')
+}
+
+// Retourne true si l'URL est un modelPath builtin (chemin relatif /elden-ring...)
+function isBuiltinPath(url) {
+  if (!url || typeof url !== 'string') return false
+  // chemin relatif genre /elden-ring-3d-forge/models/xxx.glb
+  return url.includes('/models/') && !url.startsWith('http') && !url.startsWith('blob:')
+}
+
+// Applique un proxy CORS si l'URL est une URL Google Drive ou autre URL distante sans CORS
+function withCorsProxy(url) {
+  if (!url || typeof url !== 'string') return url
+  // Drive, Dropbox, OneDrive — on wrappe avec corsproxy.io
+  if (
+    url.includes('drive.google.com') ||
+    url.includes('dropbox.com') ||
+    url.includes('1drv.ms') ||
+    url.includes('onedrive.live.com')
+  ) {
+    return `https://corsproxy.io/?url=${encodeURIComponent(url)}`
+  }
+  return url
+}
+
 function loadStoredModels() {
   if (typeof window === 'undefined') return []
   try {
@@ -13,7 +40,19 @@ function loadStoredModels() {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed
+    // Nettoie les URLs invalides au chargement :
+    // - blob: URLs (mortes après rechargement)
+    // - chemins modelPath builtin sans fichier réel
+    return parsed.map((model) => {
+      if (isBlobUrl(model.url) || isBuiltinPath(model.url)) {
+        return { ...model, url: '' }
+      }
+      // Applique le proxy CORS sur les URLs distantes connues
+      if (model.url) {
+        return { ...model, url: withCorsProxy(model.url) }
+      }
+      return model
+    })
   } catch {
     return []
   }
@@ -95,7 +134,6 @@ function EldenModel({ url }) {
     const center = box.getCenter(new THREE.Vector3())
     const size = box.getSize(new THREE.Vector3())
     const longest = Math.max(size.x, size.y, size.z) || 1
-
     root.position.sub(center)
 
     return { object: root, scale: 3 / longest }
@@ -109,11 +147,10 @@ function EldenModel({ url }) {
 }
 
 function Viewer({ modelUrl, autoRotate }) {
-  // Pas d'URL → état vide, pas de crash
   if (!modelUrl || modelUrl.trim() === '') {
     return (
       <div className="empty-viewer">
-        <p>Importe un GLB Elden Ring pour commencer.</p>
+        <p>Aucun modèle disponible. Importe un GLB ou ajoute une URL.</p>
       </div>
     )
   }
@@ -190,9 +227,7 @@ function App() {
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(models))
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }, [models])
 
   // Chargement de la bibliothèque JSON au démarrage
@@ -216,10 +251,9 @@ function App() {
             const name = entry.name || 'Inconnu'
             const info = { ...DEFAULT_INFO, ...(entry.info || {}), title: entry.info?.title || name }
 
-            // URL du modèle : priorité à remoteUrl, sinon modelPath, sinon vide
             let modelUrl = ''
             if (entry.remoteUrl && entry.remoteUrl.trim() !== '' && !entry.remoteUrl.startsWith('REMPLACE')) {
-              modelUrl = entry.remoteUrl
+              modelUrl = withCorsProxy(entry.remoteUrl)
             } else if (entry.modelPath && entry.modelPath.trim() !== '') {
               modelUrl = `${import.meta.env.BASE_URL}${entry.modelPath.replace(/^\//, '')}`
             }
@@ -230,7 +264,7 @@ function App() {
               existing.info = { ...ensureInfo(existing), ...info }
               if (!existing.url && modelUrl) {
                 existing.url = modelUrl
-                existing.source = entry.remoteUrl ? 'remote' : 'builtin'
+                existing.source = entry.remoteUrl && modelUrl ? 'remote' : 'builtin'
               }
             } else {
               merged.push({
@@ -245,9 +279,7 @@ function App() {
 
           return merged
         })
-      } catch {
-        // pas grave si le JSON n'existe pas encore
-      }
+      } catch { /* pas grave si le JSON n'existe pas encore */ }
     }
 
     if (!cancelled) loadLibrary()
@@ -255,9 +287,10 @@ function App() {
   }, [])
 
   const addModel = useCallback((name, url, source) => {
+    const safeUrl = isBlobUrl(url) ? url : withCorsProxy(url)
     setModels((current) => {
       const id = `${Date.now()}-${current.length}`
-      const base = { id, name, url, source, info: { ...DEFAULT_INFO, title: name } }
+      const base = { id, name, url: safeUrl, source, info: { ...DEFAULT_INFO, title: name } }
       const next = [...current, base]
       if (!selectedId) setSelectedId(id)
       return next
@@ -284,27 +317,14 @@ function App() {
     })
   }, [addModel])
 
-  const handleDrop = useCallback((event) => {
-    event.preventDefault()
-    setIsDragging(false)
-    handleFiles(event.dataTransfer.files)
-  }, [handleFiles])
-
-  const handleDragOver = useCallback((event) => {
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'copy'
-    setIsDragging(true)
-  }, [])
-
-  const handleDragLeave = useCallback((event) => {
-    event.preventDefault()
-    setIsDragging(false)
-  }, [])
+  const handleDrop = useCallback((e) => { e.preventDefault(); setIsDragging(false); handleFiles(e.dataTransfer.files) }, [handleFiles])
+  const handleDragOver = useCallback((e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setIsDragging(true) }, [])
+  const handleDragLeave = useCallback((e) => { e.preventDefault(); setIsDragging(false) }, [])
 
   const handleRemoteAdd = useCallback(() => {
     const url = remoteUrl.trim()
     if (!url) return
-    const nameFromUrl = url.split('/').slice(-1)[0] || 'Remote GLB'
+    const nameFromUrl = url.split('/').pop() || 'Remote GLB'
     addModel(nameFromUrl, url, 'remote')
     setRemoteUrl('')
   }, [addModel, remoteUrl])
@@ -346,7 +366,7 @@ function App() {
               merged.push({
                 id: entry.id || `${Date.now()}-${merged.length}`,
                 name,
-                url: entry.url || '',
+                url: withCorsProxy(entry.url || ''),
                 source: entry.source || (entry.url ? 'remote' : 'unknown'),
                 info: { ...DEFAULT_INFO, ...(entry.info || {}), title: entry.info?.title || name },
               })
@@ -420,19 +440,19 @@ function App() {
               <input
                 type="file"
                 accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
-                onChange={(event) => { handleFiles(event.target.files); event.target.value = '' }}
+                onChange={(e) => { handleFiles(e.target.files); e.target.value = '' }}
               />
             </label>
 
             <div className="remote-input">
               <input
                 type="url"
-                placeholder="Colle une URL de modèle GLB accessible en ligne"
+                placeholder="URL directe vers un fichier .glb (Drive, Dropbox, R2...)"
                 value={remoteUrl}
-                onChange={(event) => setRemoteUrl(event.target.value)}
+                onChange={(e) => setRemoteUrl(e.target.value)}
               />
               <button type="button" onClick={handleRemoteAdd}>
-                Ajouter depuis l'URL
+                Ajouter depuis l’URL
               </button>
             </div>
 
@@ -445,10 +465,10 @@ function App() {
                 <input
                   type="file"
                   accept="application/json"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0]
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
                     if (file) handleImportLibrary(file)
-                    event.target.value = ''
+                    e.target.value = ''
                   }}
                 />
               </label>
