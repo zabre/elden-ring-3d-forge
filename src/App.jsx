@@ -4,6 +4,8 @@ import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 
 const STORAGE_KEY = 'er3d-library-v1'
+const SELECTED_KEY = 'er3d-selected-v1'
+const DEFAULT_SELECTED = 'hoarah-loux'
 const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
 
 function isBlobUrl(url) {
@@ -42,6 +44,16 @@ function loadStoredModels() {
     })
   } catch {
     return []
+  }
+}
+
+function loadStoredSelected() {
+  if (typeof window === 'undefined') return DEFAULT_SELECTED
+  try {
+    const v = window.localStorage.getItem(SELECTED_KEY)
+    return v || DEFAULT_SELECTED
+  } catch {
+    return DEFAULT_SELECTED
   }
 }
 
@@ -308,7 +320,7 @@ function InfoPane({ model, onUpdateInfo }) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
   const [models, setModels] = useState(() => loadStoredModels())
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(() => loadStoredSelected())
   const [remoteUrl, setRemoteUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [autoRotate, setAutoRotate] = useState(true)
@@ -319,10 +331,16 @@ function App() {
 
   const selectedModel = models.find(m => m.id === selectedId) || models[0]
 
-  // Persistance
+  // Persistance models
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(models)) } catch { }
   }, [models])
+
+  // Persistance sélection
+  useEffect(() => {
+    if (!selectedId) return
+    try { window.localStorage.setItem(SELECTED_KEY, selectedId) } catch { }
+  }, [selectedId])
 
   // Chargement library.json — remoteUrl/modelPath écrase TOUJOURS l'URL locale
   useEffect(() => {
