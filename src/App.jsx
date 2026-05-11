@@ -6,22 +6,17 @@ import * as THREE from 'three'
 const STORAGE_KEY = 'er3d-library-v1'
 const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
 
-// Retourne true si l'URL est une blob: locale (non persistable)
 function isBlobUrl(url) {
   return typeof url === 'string' && url.startsWith('blob:')
 }
 
-// Retourne true si l'URL est un modelPath builtin (chemin relatif /elden-ring...)
 function isBuiltinPath(url) {
   if (!url || typeof url !== 'string') return false
-  // chemin relatif genre /elden-ring-3d-forge/models/xxx.glb
   return url.includes('/models/') && !url.startsWith('http') && !url.startsWith('blob:')
 }
 
-// Applique un proxy CORS si l'URL est une URL Google Drive ou autre URL distante sans CORS
 function withCorsProxy(url) {
   if (!url || typeof url !== 'string') return url
-  // Drive, Dropbox, OneDrive — on wrappe avec corsproxy.io
   if (
     url.includes('drive.google.com') ||
     url.includes('dropbox.com') ||
@@ -40,14 +35,10 @@ function loadStoredModels() {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    // Nettoie les URLs invalides au chargement :
-    // - blob: URLs (mortes après rechargement)
-    // - chemins modelPath builtin sans fichier réel
     return parsed.map((model) => {
       if (isBlobUrl(model.url) || isBuiltinPath(model.url)) {
         return { ...model, url: '' }
       }
-      // Applique le proxy CORS sur les URLs distantes connues
       if (model.url) {
         return { ...model, url: withCorsProxy(model.url) }
       }
@@ -76,7 +67,6 @@ function ensureInfo(model) {
   return { ...DEFAULT_INFO, ...(model.info || {}) }
 }
 
-// ─── Error Boundary pour isoler les crashs du viewer ───────────────────────
 class ViewerErrorBoundary extends Component {
   constructor(props) {
     super(props)
@@ -150,7 +140,7 @@ function Viewer({ modelUrl, autoRotate }) {
   if (!modelUrl || modelUrl.trim() === '') {
     return (
       <div className="empty-viewer">
-        <p>Aucun modèle disponible. Importe un GLB ou ajoute une URL.</p>
+        <p>Aucun modèle disponible. Importe un GLB ou ajoute une URL.</p>
       </div>
     )
   }
@@ -231,6 +221,9 @@ function App() {
   }, [models])
 
   // Chargement de la bibliothèque JSON au démarrage
+  // L'URL définie dans library.json (remoteUrl ou modelPath) écrase TOUJOURS
+  // l'URL stockée localement pour les entrées builtin/remote, afin que
+  // mettre à jour library.json suffise sans vider le localStorage.
   useEffect(() => {
     let cancelled = false
 
@@ -251,29 +244,29 @@ function App() {
             const name = entry.name || 'Inconnu'
             const info = { ...DEFAULT_INFO, ...(entry.info || {}), title: entry.info?.title || name }
 
-            let modelUrl = ''
-            if (entry.remoteUrl && entry.remoteUrl.trim() !== '' && !entry.remoteUrl.startsWith('REMPLACE')) {
-              modelUrl = withCorsProxy(entry.remoteUrl)
+            // Calcule l'URL canonique depuis library.json
+            let canonicalUrl = ''
+            const isRemote = entry.remoteUrl && entry.remoteUrl.trim() !== '' && !entry.remoteUrl.startsWith('REMPLACE')
+            if (isRemote) {
+              canonicalUrl = withCorsProxy(entry.remoteUrl)
             } else if (entry.modelPath && entry.modelPath.trim() !== '') {
-              modelUrl = `${import.meta.env.BASE_URL}${entry.modelPath.replace(/^\//, '')}`
+              canonicalUrl = `${import.meta.env.BASE_URL}${entry.modelPath.replace(/^\//, '')}`
             }
 
+            const source = isRemote ? 'remote' : 'builtin'
             const existing = byId.get(id) || merged.find((m) => m.name === name)
 
             if (existing) {
+              // Toujours mettre à jour la fiche info
               existing.info = { ...ensureInfo(existing), ...info }
-              if (!existing.url && modelUrl) {
-                existing.url = modelUrl
-                existing.source = entry.remoteUrl && modelUrl ? 'remote' : 'builtin'
+              // Écraser l'URL si library.json en fournit une valide
+              // (sauf si l'utilisateur a uploadé un fichier local cette session)
+              if (canonicalUrl && existing.source !== 'upload') {
+                existing.url = canonicalUrl
+                existing.source = source
               }
             } else {
-              merged.push({
-                id,
-                name,
-                url: modelUrl,
-                source: entry.remoteUrl && modelUrl ? 'remote' : 'builtin',
-                info,
-              })
+              merged.push({ id, name, url: canonicalUrl, source, info })
             }
           })
 
@@ -452,7 +445,7 @@ function App() {
                 onChange={(e) => setRemoteUrl(e.target.value)}
               />
               <button type="button" onClick={handleRemoteAdd}>
-                Ajouter depuis l’URL
+                Ajouter depuis l'URL
               </button>
             </div>
 
