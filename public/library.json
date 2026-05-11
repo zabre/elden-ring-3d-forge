@@ -2,8 +2,8 @@
   {
     "id": "malenia",
     "name": "Malenia, Blade of Miquella",
-    "modelPath": "models/malenia.glb",
-    "remoteUrl": "",
+    "modelPath": "",
+    "remoteUrl": "REMPLACE_PAR_URL_DRIVE_DIRECTE",
     "info": {
       "title": "Malenia, Blade of Miquella",
       "role": "Shardbearer boss",
@@ -11,9 +11,9 @@
       "affiliation": "Haligtree / Miquella",
       "difficulty": 5,
       "recommendedLevel": "120+",
-      "fightStyle": "Boss extrêmement agressif, focalisé sur les combos rapides, la mobilité et l'accumulation de saignement.",
-      "keyMoves": "Waterfowl Dance, charges plongeantes, attaques rapides à l'épée, seconde phase Scarlet Aeonia.",
-      "strategyNotes": "Construire de la résistance au saignement, privilégier des armes à portée ou du burst magique, utiliser les invocations pour gérer sa pression constante.",
+      "fightStyle": "Boss extr\u00eamement agressif, focalis\u00e9 sur les combos rapides, la mobilit\u00e9 et l'accumulation de saignement.",
+      "keyMoves": "Waterfowl Dance, charges plongeantes, attaques rapides \u00e0 l'\u00e9p\u00e9e, seconde phase Scarlet Aeonia.",
+      "strategyNotes": "Construire de la r\u00e9sistance au saignement, privil\u00e9gier des armes \u00e0 port\u00e9e ou du burst magique, utiliser les invocations pour g\u00e9rer sa pression constante.",
       "tags": "shardbearer, late game, bleed, melee"
     }
   }
