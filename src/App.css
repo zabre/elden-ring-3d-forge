@@ -1,5 +1,5 @@
 /* =========================================================
-   Elden Ring 3D Forge — App.css (refonte 2025)
+   Elden Ring 3D Forge — App.css
    Thème : Terres Intermédiaires — sombre & or
    ========================================================= */
 
@@ -404,17 +404,29 @@ input, textarea, select { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
-/* Mobile tabs — hidden on desktop */
+/* ─── Mobile tabs ────────────────────────────────────── */
+/* Cachés sur desktop, visibles sur mobile via media query */
 .mobile-tabs { display: none; }
 
-.mobile-panel { display: none; }
-.mobile-panel.visible { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+/* ─── Viewer panel ───────────────────────────────────── */
+/*
+  .viewer-panel est le conteneur direct du <Canvas> Three.js.
+  Sur desktop il occupe tout le main-pane via flex:1.
+  Sur mobile il a une hauteur explicite en pixels pour que WebGL
+  puisse calculer ses dimensions (évite le canvas à 0px sur iOS/Safari).
+*/
+.viewer-panel {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
-/* Desktop: viewer takes full space */
-@media (min-width: 769px) {
-  .mobile-tabs { display: none !important; }
-  .mobile-panel { display: flex !important; flex-direction: column; flex: 1; overflow: hidden; }
-  .mobile-info-panel { display: none !important; }
+/* Panneau info mobile — caché sur desktop */
+.mobile-info-panel {
+  display: none;
 }
 
 /* ─── Viewer ──────────────────────────────────────────── */
@@ -435,7 +447,7 @@ input, textarea, select { font: inherit; color: inherit; }
   width: 100% !important;
   height: 100% !important;
   display: block;
-  touch-action: none;
+  touch-action: manipulation;
 }
 
 .viewer-vignette {
@@ -849,23 +861,33 @@ input, textarea, select { font: inherit; color: inherit; }
   white-space: nowrap;
 }
 
-/* ─── Mobile layout ──────────────────────────────────── */
+/* =========================================================
+   MOBILE LAYOUT
+   Breakpoint principal : 768px
+   Stratégie :
+   - sidebar compactée en haut (hauteur bornée)
+   - viewer-panel avec hauteur en pixels résolus
+     → évite le canvas WebGL à 0px sur iOS/Safari
+   - mobile-info-panel scrollable séparément
+   ========================================================= */
 
 @media (max-width: 768px) {
   .app-body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
   }
 
-  /* Sidebar becomes a horizontal scrollable row at the top */
+  /* Sidebar compacte en haut */
   .sidebar {
     width: 100%;
     height: auto;
+    max-height: 34vh;
     border-right: none;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    max-height: 40vh;
+    min-height: 0;
   }
 
   .sidebar-search {
@@ -873,26 +895,26 @@ input, textarea, select { font: inherit; color: inherit; }
   }
 
   .model-list {
-    display: grid;
-    grid-auto-flow: row;
-    padding: 0.25rem 0.5rem 0.5rem;
-    max-height: 30vh;
+    max-height: 24vh;
     overflow-y: auto;
   }
 
-  /* Main pane takes remaining space */
+  /* Main pane */
   .main-pane {
     flex: 1;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
 
-  /* Mobile tabs */
+  /* Onglets */
   .mobile-tabs {
     display: flex;
     flex-shrink: 0;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
+    z-index: 10;
   }
 
   .mobile-tabs button {
@@ -910,46 +932,84 @@ input, textarea, select { font: inherit; color: inherit; }
     border-bottom-color: var(--gold);
   }
 
-  /* Panels */
-  .mobile-panel { display: none; }
-  .mobile-panel.visible {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
+  /*
+    Viewer panel mobile :
+    - display:none par défaut, block quand .visible
+    - hauteur fixe en pixels calculés = seul moyen fiable
+      de donner une surface résolue au canvas WebGL sur iOS
+    - position:relative crée le contexte pour viewer-wrapper/canvas
+  */
+  .viewer-panel {
+    display: none;
+    position: relative;
     overflow: hidden;
-    min-height: 0;
+    background: #050608;
+    /* hauteur bornée mais résolue — pas de flex:1 ici */
+    height: min(52dvh, 560px);
+    min-height: 300px;
+    flex: none;
   }
 
-  .mobile-info-panel.visible {
-    overflow-y: auto;
+  .viewer-panel.visible {
+    display: block;
   }
 
-  /* Hide desktop info pane */
-  .info-pane { display: none; }
-
-  /* Viewer must have explicit height on mobile */
+  /*
+    viewer-wrapper occupe tout le viewer-panel.
+    position:absolute+inset:0 → dimensions héritées du parent
+    sans dépendre de la chaîne flex.
+  */
   .viewer-wrapper {
-    position: relative !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 0;
-    flex: 1;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
   }
 
+  .viewer-wrapper.viewer-ready { opacity: 1; }
+
+  /*
+    Canvas en absolute+inset:0 — taille imposée par le parent
+    qui a maintenant une hauteur résolue en pixels.
+    touch-action:manipulation conserve le pinch-zoom OrbitControls
+    tout en supprimant le double-tap zoom navigateur.
+  */
   .viewer-canvas {
     position: absolute !important;
     inset: 0;
     width: 100% !important;
     height: 100% !important;
+    display: block;
+    touch-action: manipulation;
   }
 
+  /* Panneau info mobile */
+  .mobile-info-panel {
+    display: none;
+    overflow-y: auto;
+    background: var(--surface);
+    flex: 1;
+    min-height: 0;
+  }
+
+  .mobile-info-panel.visible {
+    display: block;
+  }
+
+  /* Masquer le panneau info desktop */
+  .info-pane { display: none; }
+
+  /* Header compact */
   .app-header p { display: none; }
   .app-header h1 { font-size: 0.85rem; }
 }
 
 @media (max-width: 480px) {
-  .sidebar { max-height: 35vh; }
-  .model-list { max-height: 25vh; }
+  .sidebar { max-height: 32vh; }
+  .model-list { max-height: 22vh; }
+  .viewer-panel { height: min(48dvh, 420px); min-height: 260px; }
 }
 
 /* ─── Scrollbar styling ───────────────────────────────── */

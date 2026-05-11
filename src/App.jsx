@@ -134,14 +134,14 @@ function Viewer({ modelUrl, autoRotate, bossName }) {
           className="viewer-canvas"
           camera={{ position: [0, 1.6, 5], fov: 40 }}
           shadows
-          dpr={[1, 1.5]}
+          dpr={[1, 1.25]}
           gl={{
             antialias: true,
             alpha: false,
             preserveDrawingBuffer: false,
             powerPreference: 'high-performance',
           }}
-          style={{ width: '100%', height: '100%' }}
+          style={{ width: '100%', height: '100%', display: 'block' }}
         >
           <color attach="background" args={['#050608']} />
           <ambientLight intensity={0.6} />
@@ -544,7 +544,7 @@ function App() {
           </ul>
         </aside>
 
-        {/* Viewer */}
+        {/* Main pane — contient viewer + panneau info mobile */}
         <main
           className={`main-pane ${isDragging ? 'dragging' : ''}`}
           onDrop={handleDrop}
@@ -557,7 +557,8 @@ function App() {
             <button type="button" className={mobilePanel === 'info' ? 'active' : ''} onClick={() => setMobilePanel('info')}>✦ Fiche boss</button>
           </div>
 
-          <div className={`mobile-panel ${mobilePanel === 'viewer' ? 'visible' : ''}`}>
+          {/* Viewer panel — remplace .mobile-panel pour un contexte de positionnement fiable */}
+          <section className={`viewer-panel${mobilePanel === 'viewer' ? ' visible' : ''}`}>
             <Viewer
               modelUrl={selectedModel?.url}
               autoRotate={autoRotate}
@@ -568,12 +569,12 @@ function App() {
                 <p>Dépose ton fichier GLB ici</p>
               </div>
             )}
-          </div>
+          </section>
 
-          {/* Info pane mobile (visible via tab) */}
-          <div className={`mobile-panel mobile-info-panel ${mobilePanel === 'info' ? 'visible' : ''}`}>
+          {/* Info panel mobile */}
+          <section className={`mobile-info-panel${mobilePanel === 'info' ? ' visible' : ''}`}>
             <InfoPane model={selectedModel} onUpdateInfo={updateModelInfo} />
-          </div>
+          </section>
         </main>
 
         {/* Info pane desktop */}
