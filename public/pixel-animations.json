@@ -5,71 +5,71 @@
     "attack": "GIF joué quand Phase 2 / bouton Attaque est actif.",
     "hit": "(optionnel) GIF joué brièvement quand le boss reçoit un coup.",
     "death": "(optionnel) GIF de mort.",
-    "note": "Tous les champs sont optionnels sauf idle. Placez vos GIFs dans /public/sprites/."
+    "note": "Tous les champs sont optionnels sauf idle. Placez vos GIFs dans public/sprites/ (sans slash initial — le BASE_URL est ajouté automatiquement)."
   },
 
   "margit": {
-    "idle":   "/sprites/margit-idle.gif",
-    "attack": "/sprites/margit-attack.gif"
+    "idle":   "sprites/margit-idle.gif",
+    "attack": "sprites/margit-attack.gif"
   },
 
   "godrick": {
-    "idle":   "/sprites/godrick-idle.gif",
-    "attack": "/sprites/godrick-attack.gif"
+    "idle":   "sprites/godrick-idle.gif",
+    "attack": "sprites/godrick-attack.gif"
   },
 
   "rennala": {
-    "idle":   "/sprites/rennala-idle.gif",
-    "attack": "/sprites/rennala-attack.gif"
+    "idle":   "sprites/rennala-idle.gif",
+    "attack": "sprites/rennala-attack.gif"
   },
 
   "starscourge-radahn": {
-    "idle":   "/sprites/radahn-idle.gif",
-    "attack": "/sprites/radahn-attack.gif"
+    "idle":   "sprites/radahn-idle.gif",
+    "attack": "sprites/radahn-attack.gif"
   },
 
   "morgott": {
-    "idle":   "/sprites/morgott-idle.gif",
-    "attack": "/sprites/morgott-attack.gif"
+    "idle":   "sprites/morgott-idle.gif",
+    "attack": "sprites/morgott-attack.gif"
   },
 
   "rykard": {
-    "idle":   "/sprites/rykard-idle.gif",
-    "attack": "/sprites/rykard-attack.gif"
+    "idle":   "sprites/rykard-idle.gif",
+    "attack": "sprites/rykard-attack.gif"
   },
 
   "fire-giant": {
-    "idle":   "/sprites/fire-giant-idle.gif",
-    "attack": "/sprites/fire-giant-attack.gif"
+    "idle":   "sprites/fire-giant-idle.gif",
+    "attack": "sprites/fire-giant-attack.gif"
   },
 
   "malenia": {
-    "idle":   "/sprites/malenia-idle.gif",
-    "attack": "/sprites/malenia-attack.gif"
+    "idle":   "sprites/malenia-idle.gif",
+    "attack": "sprites/malenia-attack.gif"
   },
 
   "mohg": {
-    "idle":   "/sprites/mohg-idle.gif",
-    "attack": "/sprites/mohg-attack.gif"
+    "idle":   "sprites/mohg-idle.gif",
+    "attack": "sprites/mohg-attack.gif"
   },
 
   "dragonlord-placidusax": {
-    "idle":   "/sprites/placidusax-idle.gif",
-    "attack": "/sprites/placidusax-attack.gif"
+    "idle":   "sprites/placidusax-idle.gif",
+    "attack": "sprites/placidusax-attack.gif"
   },
 
   "maliketh": {
-    "idle":   "/sprites/maliketh-idle.gif",
-    "attack": "/sprites/maliketh-attack.gif"
+    "idle":   "sprites/maliketh-idle.gif",
+    "attack": "sprites/maliketh-attack.gif"
   },
 
   "godfrey-hoarah-loux": {
-    "idle":   "/sprites/godfrey-idle.gif",
-    "attack": "/sprites/godfrey-animation.gif"
+    "idle":   "sprites/godfrey-animation.gif",
+    "attack": "sprites/godfrey-animation.gif"
   },
 
   "radagon-elden-beast": {
-    "idle":   "/sprites/radagon-idle.gif",
-    "attack": "/sprites/radagon-attack.gif"
+    "idle":   "sprites/radagon-idle.gif",
+    "attack": "sprites/radagon-attack.gif"
   }
 }
