@@ -7,13 +7,15 @@ import * as THREE from 'three'
 
 const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
 const AURA_COLORS = ['#ffffff', '#4a90d9', '#4caf7d', '#e0a030', '#e06020', '#c0392b']
+
+// Palettes JRPG 16-bit — tons sépia/brun/rouille + accents riches (style image de référence)
 const PIXEL_PALETTES = [
-  { bg: '#1a1a2e', fg: '#e0e0ff', accent: '#ffffff', shadow: '#0d0d1a' },
-  { bg: '#0d1b2a', fg: '#7ec8e3', accent: '#4a90d9', shadow: '#060e14' },
-  { bg: '#0a1a0f', fg: '#7aef7a', accent: '#4caf7d', shadow: '#050d07' },
-  { bg: '#1a1200', fg: '#ffd26a', accent: '#e0a030', shadow: '#0d0900' },
-  { bg: '#1a0800', fg: '#ffb07a', accent: '#e06020', shadow: '#0d0400' },
-  { bg: '#1a0005', fg: '#ff7a9a', accent: '#c0392b', shadow: '#0d0003' },
+  { bg: '#1c1610', mid: '#2e2518', fg: '#c8b89a', accent: '#e8d5b0', shadow: '#0d0b08', hp: '#a8956e', name: 'VOYAGEUR' },
+  { bg: '#0e1620', mid: '#1a2535', fg: '#8ab4d8', accent: '#b8d4f0', shadow: '#070d14', hp: '#5a8ab0', name: 'GARDIEN' },
+  { bg: '#101a10', mid: '#1a2e1a', fg: '#8ab88a', accent: '#b0d8b0', shadow: '#080e08', hp: '#58985a', name: 'SENTINELLE' },
+  { bg: '#1e1408', mid: '#302010', fg: '#d8a860', accent: '#f0c878', shadow: '#100a04', hp: '#c08030', name: 'CONQUÉRANT' },
+  { bg: '#1e0e08', mid: '#300e08', fg: '#d87850', accent: '#f09060', shadow: '#100604', hp: '#b85030', name: 'DESTRUCTEUR' },
+  { bg: '#180810', mid: '#281018', fg: '#d05878', accent: '#e87898', shadow: '#0e0408', hp: '#a02848', name: 'DÉVASTATEUR' },
 ]
 
 function ensureInfo(model) {
@@ -33,11 +35,9 @@ function useModelCache(models, selectedId) {
     const selected = models.find(m => m.id === selectedId)
     if (selected?.url) urlsToKeep.push(selected.url)
     if (selected?.altUrl) urlsToKeep.push(selected.altUrl)
-
     urlsToKeep.forEach(url => {
       if (!cacheRef.current.includes(url)) cacheRef.current.push(url)
     })
-
     while (cacheRef.current.length > 5) {
       const oldest = cacheRef.current.shift()
       if (!urlsToKeep.includes(oldest)) {
@@ -140,16 +140,13 @@ function Scene({ selected, altActive, autoRotate, orbitRef, glRef }) {
     <>
       <color attach="background" args={['#050608']} />
       <fogExp2 attach="fog" color="#050608" density={0.06} />
-      
       <ambientLight intensity={0.4} />
       <directionalLight position={[4, 6, 4]} intensity={2.5} castShadow shadow-mapSize={[1024, 1024]} />
       <pointLight position={[-4, 3, -3]} intensity={1.5} color="#8fb5ff" />
-
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.2, 0]}>
         <circleGeometry args={[8, 64]} />
         <meshStandardMaterial color="#0a0a10" roughness={0.8} metalness={0.4} />
       </mesh>
-
       <Suspense fallback={null}>
         <Environment preset="night" />
         {url && (
@@ -160,9 +157,7 @@ function Scene({ selected, altActive, autoRotate, orbitRef, glRef }) {
           </ViewerErrorBoundary>
         )}
       </Suspense>
-
       <OrbitControls ref={orbitRef} enableDamping dampingFactor={0.05} minDistance={3} maxDistance={12} target={[0, 1, 0]} autoRotate={autoRotate} autoRotateSpeed={0.5} />
-
       <EffectComposer disableNormalPass>
         <Bloom luminanceThreshold={0.5} intensity={0.8} mipmapBlur />
         <Vignette eskil={false} offset={0.3} darkness={0.8} />
@@ -172,44 +167,42 @@ function Scene({ selected, altActive, autoRotate, orbitRef, glRef }) {
   )
 }
 
-// ─── PIXEL PARTICLES (canvas-based embers) ────────────────────────────────────
-function PixelEmbers({ color }) {
+// ─── PIXEL DUST PARTICLES ─────────────────────────────────────────────────────
+function PixelDust({ palette }) {
   const canvasRef = useRef()
-  const particlesRef = useRef([])
-
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     const W = canvas.width = canvas.offsetWidth
     const H = canvas.height = canvas.offsetHeight
-
-    particlesRef.current = Array.from({ length: 28 }, (_, i) => ({
+    const colors = [palette.accent, palette.fg, palette.hp, '#ffffff']
+    const particles = Array.from({ length: 36 }, () => ({
       x: Math.random() * W,
-      y: H - Math.random() * H * 0.4,
-      size: (Math.floor(Math.random() * 3) + 1) * 2,
-      speed: 0.4 + Math.random() * 0.8,
-      drift: (Math.random() - 0.5) * 0.5,
+      y: H * 0.4 + Math.random() * H * 0.5,
+      size: (Math.floor(Math.random() * 2) + 1) * 2,
+      speed: 0.25 + Math.random() * 0.55,
+      drift: (Math.random() - 0.5) * 0.4,
       life: Math.random(),
-      maxLife: 0.6 + Math.random() * 0.4,
+      maxLife: 0.5 + Math.random() * 0.5,
+      color: colors[Math.floor(Math.random() * colors.length)],
     }))
-
     let raf
-    function draw() {
+    const draw = () => {
       ctx.clearRect(0, 0, W, H)
-      particlesRef.current.forEach(p => {
+      particles.forEach(p => {
         p.y -= p.speed
-        p.x += p.drift + Math.sin(p.y * 0.03) * 0.3
-        p.life += 0.008
+        p.x += p.drift + Math.sin(p.y * 0.02) * 0.25
+        p.life += 0.007
         if (p.life >= p.maxLife || p.y < 0) {
           p.x = Math.random() * W
           p.y = H
           p.life = 0
-          p.size = (Math.floor(Math.random() * 3) + 1) * 2
+          p.color = colors[Math.floor(Math.random() * colors.length)]
+          p.size = (Math.floor(Math.random() * 2) + 1) * 2
         }
-        const alpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.9
-        ctx.globalAlpha = alpha
-        ctx.fillStyle = color
+        ctx.globalAlpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.75
+        ctx.fillStyle = p.color
         ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size)
       })
       ctx.globalAlpha = 1
@@ -217,57 +210,80 @@ function PixelEmbers({ color }) {
     }
     draw()
     return () => cancelAnimationFrame(raf)
-  }, [color])
-
-  return <canvas ref={canvasRef} className="pixel-embers" aria-hidden="true" />
+  }, [palette])
+  return <canvas ref={canvasRef} className="pixel-dust" aria-hidden="true" />
 }
 
-// ─── HP BAR ────────────────────────────────────────────────────────────────────
-function PixelHPBar({ difficulty, accent }) {
-  const pct = Math.max(0.05, 1 - (difficulty - 1) / 5)
-  const segments = 20
-  const filled = Math.round(pct * segments)
-  const [animPct, setAnimPct] = useState(1)
+// ─── JRPG HP BAR ──────────────────────────────────────────────────────────────
+function JRPGHPBar({ difficulty, palette }) {
+  const maxHP = 240
+  const hp = Math.round(maxHP * Math.max(0.08, 1 - (difficulty - 1) / 5.5))
+  const [animHP, setAnimHP] = useState(maxHP)
 
   useEffect(() => {
-    setAnimPct(1)
-    let frame
-    let start = null
-    function step(ts) {
+    setAnimHP(maxHP)
+    let frame, start = null
+    const step = (ts) => {
       if (!start) start = ts
-      const t = Math.min((ts - start) / 900, 1)
-      setAnimPct(1 - (1 - pct) * t)
+      const t = Math.min((ts - start) / 1100, 1)
+      setAnimHP(Math.round(maxHP - (maxHP - hp) * (1 - Math.pow(1 - t, 2))))
       if (t < 1) frame = requestAnimationFrame(step)
     }
     frame = requestAnimationFrame(step)
     return () => cancelAnimationFrame(frame)
-  }, [pct])
+  }, [hp])
 
-  const animFilled = Math.round(animPct * segments)
+  const pct = animHP / maxHP
+  const barW = Math.round(pct * 100)
+  const hpColor = pct > 0.5 ? palette.hp : pct > 0.25 ? '#c8882a' : '#c83030'
 
   return (
-    <div className="pixel-hpbar-wrap">
-      <span className="pixel-hpbar-label">HP</span>
-      <div className="pixel-hpbar">
-        {Array.from({ length: segments }, (_, i) => (
-          <div
-            key={i}
-            className="pixel-hpbar-seg"
-            style={{
-              background: i < animFilled
-                ? (i < segments * 0.3 ? '#c0392b' : i < segments * 0.6 ? '#e0a030' : accent)
-                : 'rgba(0,0,0,0.5)',
-              boxShadow: i < animFilled ? `0 0 4px ${accent}` : 'none',
-            }}
-          />
-        ))}
+    <div className="jrpg-hpbar-wrap">
+      <div className="jrpg-hpbar-labels">
+        <span className="jrpg-hpbar-name">HP</span>
+        <span className="jrpg-hpbar-nums" style={{ color: palette.accent }}>{animHP}<span className="jrpg-hpbar-max">/{maxHP}</span></span>
       </div>
-      <span className="pixel-hpbar-val" style={{ color: accent }}>{difficulty}★</span>
+      <div className="jrpg-hpbar-track">
+        <div className="jrpg-hpbar-fill" style={{ width: `${barW}%`, background: hpColor, boxShadow: `0 0 6px ${hpColor}` }} />
+        <div className="jrpg-hpbar-shine" />
+      </div>
     </div>
   )
 }
 
-// ─── RETRO VIEWER (SNES/GBA-style boss fight) ─────────────────────────────────
+// ─── JRPG MP BAR ─────────────────────────────────────────────────────────────
+function JRPGMPBar({ difficulty, palette }) {
+  const maxMP = 120
+  const mp = Math.round(maxMP * (0.3 + (difficulty / 5) * 0.65))
+  const pct = mp / maxMP
+  return (
+    <div className="jrpg-mpbar-wrap">
+      <div className="jrpg-hpbar-labels">
+        <span className="jrpg-hpbar-name" style={{ color: '#88aadd' }}>MP</span>
+        <span className="jrpg-hpbar-nums" style={{ color: '#aaccff' }}>{mp}<span className="jrpg-hpbar-max">/{maxMP}</span></span>
+      </div>
+      <div className="jrpg-mpbar-track">
+        <div className="jrpg-mpbar-fill" style={{ width: `${Math.round(pct * 100)}%` }} />
+        <div className="jrpg-hpbar-shine" />
+      </div>
+    </div>
+  )
+}
+
+// ─── JRPG HEARTS ROW ──────────────────────────────────────────────────────────
+function JRPGHearts({ difficulty }) {
+  const total = 3
+  const full = Math.max(0, total - Math.floor((difficulty - 1) / 2))
+  return (
+    <div className="jrpg-hearts">
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} className={`jrpg-heart ${i < full ? 'full' : 'empty'}`}>♥</span>
+      ))}
+    </div>
+  )
+}
+
+// ─── RETRO VIEWER — JRPG 2D STYLE ────────────────────────────────────────────
 function RetroViewer({ selected, altActive }) {
   const info = ensureInfo(selected)
   const diff = Math.max(0, Math.min(5, info.difficulty || 3))
@@ -281,23 +297,37 @@ function RetroViewer({ selected, altActive }) {
   const bossName = (selected?.name || '???').toUpperCase()
 
   return (
-    <div className="retro-viewer" style={{ '--aura': auraColor, '--pal-bg': palette.bg, '--pal-fg': palette.fg, '--pal-accent': palette.accent, '--pal-shadow': palette.shadow }}>
+    <div
+      className="retro-viewer"
+      style={{
+        '--aura': auraColor,
+        '--pal-bg': palette.bg,
+        '--pal-mid': palette.mid,
+        '--pal-fg': palette.fg,
+        '--pal-accent': palette.accent,
+        '--pal-shadow': palette.shadow,
+        '--pal-hp': palette.hp,
+      }}
+    >
+      {/* Ciel dégradé + nuages pixel */}
+      <div className="retro-sky" aria-hidden="true" />
+      <div className="retro-clouds" aria-hidden="true" />
 
-      {/* Layer 1 — parallax far tiles */}
-      <div className="retro-tiles retro-tiles-far" aria-hidden="true" />
-      {/* Layer 2 — parallax near tiles */}
-      <div className="retro-tiles retro-tiles-near" aria-hidden="true" />
-
-      {/* Arena background image */}
+      {/* Fond arène */}
       {bgUrl
         ? <div className="retro-arena-bg" style={{ backgroundImage: `url(${bgUrl})` }} />
         : <div className="retro-arena-bg retro-arena-placeholder" />
       }
 
-      {/* Ground shadow */}
+      {/* Sol isométrique */}
+      <div className="retro-floor" aria-hidden="true">
+        <div className="retro-floor-circle" />
+      </div>
+
+      {/* Ombre boss */}
       <div className="retro-ground-shadow" aria-hidden="true" />
 
-      {/* Boss sprite / placeholder */}
+      {/* Sprite */}
       <div className="retro-sprite-wrap">
         {spriteUrl
           ? <img className="retro-sprite" src={spriteUrl} alt={selected?.name || 'Boss'} />
@@ -305,86 +335,109 @@ function RetroViewer({ selected, altActive }) {
         }
       </div>
 
-      {/* HUD — top bar: boss name + HP */}
-      <div className="retro-hud-top">
-        <div className="retro-hud-nameplate">
-          <span className="retro-hud-label">BOSS</span>
-          <span className="retro-hud-name" style={{ color: palette.accent }}>{bossName}</span>
-        </div>
-        <PixelHPBar difficulty={diff} accent={palette.accent} />
-      </div>
-
-      {/* HUD — bottom corners: diff stars + phase */}
-      <div className="retro-hud-bottom">
-        <div className="retro-hud-stars">
-          {[1,2,3,4,5].map(v => (
-            <span key={v} className="retro-star" style={{ color: v <= diff ? palette.accent : 'rgba(255,255,255,0.12)' }}>★</span>
+      {/* HUD — coins vie joueur (haut gauche) */}
+      <div className="jrpg-hud-topleft">
+        <JRPGHearts difficulty={diff} />
+        <div className="jrpg-hud-mana-row">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="jrpg-mana-pip" style={{ background: i < diff ? '#6699ff' : 'rgba(255,255,255,0.1)' }} />
           ))}
         </div>
-        <div className="retro-hud-phase">
-          {altActive
-            ? <span className="retro-phase-tag" style={{ borderColor: palette.accent, color: palette.accent }}>⚔ ATK</span>
-            : <span className="retro-phase-tag" style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.4)' }}>◈ IDLE</span>
-          }
+      </div>
+
+      {/* HUD — nameplate boss (bas centré — style JRPG) */}
+      <div className="jrpg-boss-hud">
+        <div className="jrpg-boss-hud-inner">
+          <div className="jrpg-boss-header">
+            <span className="jrpg-boss-rank" style={{ color: palette.accent }}>✦ {palette.name} ✦</span>
+          </div>
+          <div className="jrpg-boss-name" style={{ color: palette.fg }}>{bossName}</div>
+          <JRPGHPBar difficulty={diff} palette={palette} />
+          <JRPGMPBar difficulty={diff} palette={palette} />
+          <div className="jrpg-boss-footer">
+            <div className="jrpg-stars">
+              {[1,2,3,4,5].map(v => (
+                <span key={v} style={{ color: v <= diff ? palette.accent : 'rgba(255,255,255,0.15)', filter: v <= diff ? `drop-shadow(0 0 3px ${palette.accent})` : 'none' }}>★</span>
+              ))}
+            </div>
+            {altActive && (
+              <span className="jrpg-phase-badge" style={{ borderColor: palette.accent, color: palette.accent }}>⚔ PHASE 2</span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Ember particles */}
-      <PixelEmbers color={auraColor} />
+      {/* Particules poussière */}
+      <PixelDust palette={palette} />
 
-      {/* Frame corners */}
-      <div className="retro-corner retro-corner-tl" aria-hidden="true" />
-      <div className="retro-corner retro-corner-tr" aria-hidden="true" />
-      <div className="retro-corner retro-corner-bl" aria-hidden="true" />
-      <div className="retro-corner retro-corner-br" aria-hidden="true" />
+      {/* Coins d'interface */}
+      <div className="retro-corner retro-corner-tl" style={{ '--c': palette.accent }} aria-hidden="true" />
+      <div className="retro-corner retro-corner-tr" style={{ '--c': palette.accent }} aria-hidden="true" />
+      <div className="retro-corner retro-corner-bl" style={{ '--c': palette.accent }} aria-hidden="true" />
+      <div className="retro-corner retro-corner-br" style={{ '--c': palette.accent }} aria-hidden="true" />
 
-      {/* CRT scanlines */}
+      {/* Scanlines légères */}
       <div className="retro-scanlines" aria-hidden="true" />
-      {/* Color bleed */}
-      <div className="retro-bleed" aria-hidden="true" />
+      {/* Vignette douce */}
+      <div className="retro-vignette" aria-hidden="true" />
     </div>
   )
 }
 
-// ─── ANIMATED SVG PLACEHOLDER ─────────────────────────────────────────────────
+// ─── SPRITE PLACEHOLDER ENRICHI ────────────────────────────────────────────────
 function RetroPlaceholderSprite({ name, color, palette, altActive }) {
+  // Sprite JRPG isométrique style 32x32
   return (
     <div className="retro-placeholder-sprite" style={{ '--aura': color }}>
-      <svg viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg" className={`retro-svg-boss${altActive ? ' retro-svg-attack' : ''}`}>
-        {/* Body */}
-        <rect x="24" y="0"  width="16" height="16" fill={color} />
-        <rect x="20" y="16" width="24" height="20" fill={color} />
-        {/* Arms */}
-        <rect x="12" y="20" width="8"  height="14" fill={color} opacity="0.85" />
-        <rect x="44" y="20" width="8"  height="14" fill={color} opacity="0.85" />
-        {/* Legs */}
-        <rect x="20" y="36" width="10" height="28" fill={color} />
-        <rect x="34" y="36" width="10" height="28" fill={color} />
-        {/* Eyes */}
-        <rect x="26" y="5" width="4" height="4" fill={palette?.shadow || '#000'} />
-        <rect x="34" y="5" width="4" height="4" fill={palette?.shadow || '#000'} />
-        {/* Inner eye glow */}
-        <rect x="27" y="6" width="2" height="2" fill={palette?.fg || '#fff'} opacity="0.8" />
-        <rect x="35" y="6" width="2" height="2" fill={palette?.fg || '#fff'} opacity="0.8" />
-        {/* Sword */}
-        <rect x="52" y="8"  width="4" height="36" fill="#c8c8d8" />
-        <rect x="46" y="20" width="16" height="4" fill="#c8c8d8" />
-        {/* Sword highlight */}
-        <rect x="53" y="9"  width="1" height="34" fill="#ffffff" opacity="0.5" />
-        {/* Crown / horns */}
-        <rect x="22" y="0"  width="4" height="6" fill={color} />
-        <rect x="38" y="0"  width="4" height="6" fill={color} />
-        <rect x="28" y="0" width="8" height="4" fill={palette?.fg || '#fff'} opacity="0.3" />
-        {/* Attack slash */}
+      <svg viewBox="0 0 72 96" xmlns="http://www.w3.org/2000/svg"
+        className={`retro-svg-boss${altActive ? ' retro-svg-attack' : ''}`}>
+        {/* Cape/Manteau */}
+        <rect x="14" y="40" width="44" height="48" rx="2" fill={palette.shadow} opacity="0.6" />
+        <rect x="18" y="38" width="36" height="46" rx="2" fill={color} opacity="0.7" />
+        {/* Armure torse */}
+        <rect x="22" y="24" width="28" height="26" fill={color} />
+        <rect x="24" y="26" width="24" height="22" fill={palette.mid} />
+        {/* Détails armure */}
+        <rect x="26" y="28" width="20" height="2" fill={palette.accent} opacity="0.6" />
+        <rect x="26" y="32" width="20" height="2" fill={palette.accent} opacity="0.4" />
+        <rect x="26" y="36" width="20" height="2" fill={palette.accent} opacity="0.25" />
+        {/* Épaulières */}
+        <rect x="12" y="22" width="12" height="10" rx="1" fill={color} />
+        <rect x="48" y="22" width="12" height="10" rx="1" fill={color} />
+        <rect x="13" y="23" width="10" height="3" fill={palette.accent} opacity="0.5" />
+        <rect x="49" y="23" width="10" height="3" fill={palette.accent} opacity="0.5" />
+        {/* Tête / heaume */}
+        <rect x="26" y="6" width="20" height="18" fill={color} />
+        <rect x="28" y="8" width="16" height="14" fill={palette.mid} />
+        {/* Visière */}
+        <rect x="28" y="14" width="16" height="6" fill={palette.shadow} />
+        {/* Yeux */}
+        <rect x="30" y="15" width="5" height="3" fill={palette.accent} opacity="0.9" />
+        <rect x="37" y="15" width="5" height="3" fill={palette.accent} opacity="0.9" />
+        {/* Crête / ornement */}
+        <rect x="32" y="2" width="8" height="6" fill={palette.accent} opacity="0.8" />
+        <rect x="34" y="0" width="4" height="4" fill={palette.fg} opacity="0.6" />
+        {/* Bras gauche + arme */}
+        <rect x="8" y="26" width="10" height="20" rx="1" fill={color} opacity="0.9" />
+        {/* Épée (main droite) */}
+        <rect x="56" y="4" width="6" height="52" rx="1" fill="#b8c8d8" />
+        <rect x="50" y="28" width="18" height="5" rx="1" fill="#c8b870" />
+        <rect x="57" y="5" width="2" height="50" fill="#e8f0ff" opacity="0.5" />
+        <rect x="56" y="2" width="6" height="4" fill={palette.accent} opacity="0.8" />
+        {/* Jambes */}
+        <rect x="22" y="62" width="13" height="26" fill={color} opacity="0.85" />
+        <rect x="37" y="62" width="13" height="26" fill={color} opacity="0.85" />
+        <rect x="22" y="84" width="13" height="4" fill={palette.shadow} />
+        <rect x="37" y="84" width="13" height="4" fill={palette.shadow} />
+        {/* Slashes attaque */}
         {altActive && (
           <>
-            <rect x="44" y="30" width="20" height="3" fill={palette?.fg || '#fff'} opacity="0.9" />
-            <rect x="48" y="26" width="16" height="3" fill={palette?.fg || '#fff'} opacity="0.6" />
-            <rect x="52" y="22" width="12" height="3" fill={palette?.fg || '#fff'} opacity="0.3" />
+            <rect x="54" y="20" width="18" height="4" fill="#ffffff" opacity="0.85" transform="rotate(-20 54 20)" />
+            <rect x="56" y="30" width="14" height="3" fill="#ffffff" opacity="0.55" transform="rotate(-20 56 30)" />
+            <rect x="58" y="38" width="10" height="2" fill="#ffffff" opacity="0.3" transform="rotate(-20 58 38)" />
           </>
         )}
       </svg>
-      <div className="retro-placeholder-name" style={{ color }}>{name || '???'}</div>
     </div>
   )
 }
@@ -499,7 +552,6 @@ export default function App() {
   const [autoRotate, setAutoRotate] = useState(true)
   const [altActive, setAltActive] = useState(false)
   const [showTip, setShowTip] = useState(true)
-
   const [isPixelMode, setIsPixelMode] = useState(false)
   const [glitching, setGlitching] = useState(false)
 
@@ -509,20 +561,14 @@ export default function App() {
   useModelCache(models, selectedId)
 
   useEffect(() => {
-    if (isPixelMode) {
-      document.body.classList.add('theme-pixel')
-    } else {
-      document.body.classList.remove('theme-pixel')
-    }
+    if (isPixelMode) document.body.classList.add('theme-pixel')
+    else document.body.classList.remove('theme-pixel')
     return () => document.body.classList.remove('theme-pixel')
   }, [isPixelMode])
 
   const handlePixelToggle = useCallback(() => {
     setGlitching(true)
-    setTimeout(() => {
-      setIsPixelMode(v => !v)
-      setGlitching(false)
-    }, 480)
+    setTimeout(() => { setIsPixelMode(v => !v); setGlitching(false) }, 480)
   }, [])
 
   useEffect(() => {
@@ -617,23 +663,19 @@ export default function App() {
                 >
                   <Scene selected={selectedModel} altActive={altActive} autoRotate={autoRotate} orbitRef={orbitRef} glRef={glRef} />
                 </Canvas>
-
                 {showTip && <div className="viewer-tip">Drag to rotate · Scroll to zoom · Ctrl+drag to pan</div>}
-
                 {selectedModel?.altUrl && (
                   <div className="phase-switcher">
                     <button className={`ps-btn ${!altActive ? 'active' : ''}`} onClick={() => setAltActive(false)}>Phase 1</button>
                     <button className={`ps-btn ${altActive ? 'active' : ''}`} onClick={() => setAltActive(true)}>Phase 2</button>
                   </div>
                 )}
-
                 {!selectedModel?.url && (
                   <div className="viewer-error">
                     <div className="viewer-error-icon">⚠</div>
                     <p>Le modèle a sombré dans les Terres Intermédiaires</p>
                   </div>
                 )}
-
                 <div className="viewer-controls-bar">
                   <button className={`vc-btn ${autoRotate?'active':''}`} onClick={() => setAutoRotate(!autoRotate)} title="Space">⟲ Rotate</button>
                   <button className="vc-btn" onClick={() => orbitRef.current?.reset()}>◉ Reset</button>
