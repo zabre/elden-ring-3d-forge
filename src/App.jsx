@@ -651,6 +651,18 @@ export default function App() {
             <p>Codex interactif des Terres Intermédiaires</p>
           </div>
         </div>
+
+        {/* Bouton hamburger — dans le header, toujours visible sur mobile */}
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setSidebarOpen(v => !v)}
+          aria-label="Ouvrir la liste des boss"
+          aria-expanded={sidebarOpen}
+        >
+          <span className="mobile-menu-btn-icon">{sidebarOpen ? '✕' : '☰'}</span>
+          <span className="mobile-menu-btn-label">Boss</span>
+        </button>
+
         <div className="app-header-actions">
           <PixelToggleButton isPixelMode={isPixelMode} onClick={handlePixelToggle} />
           <span className="boss-count">{models.length} boss</span>
@@ -658,16 +670,6 @@ export default function App() {
       </header>
 
       <div className="app-body">
-        {/* Bouton hamburger — visible uniquement sur mobile via CSS */}
-        <button
-          className="mobile-menu-btn"
-          onClick={() => setSidebarOpen(v => !v)}
-          aria-label="Ouvrir la liste des boss"
-          aria-expanded={sidebarOpen}
-        >
-          ☰ Boss
-        </button>
-
         {/* Backdrop pour fermer la sidebar en cliquant à côté */}
         {sidebarOpen && (
           <div
