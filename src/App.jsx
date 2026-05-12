@@ -3,7 +3,7 @@ import React, {
   useMemo, useRef, useState
 } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Environment, useGLTF, Html } from '@react-three/drei'
+import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, ChromaticAberration, Pixelation } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
@@ -12,11 +12,8 @@ import * as THREE from 'three'
 const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
 const AURA_COLORS = ['#ffffff', '#4a90d9', '#4caf7d', '#e0a030', '#e06020', '#c0392b']
 
-// Détection URL ?annotate=1
-const IS_ANNOTATE_MODE = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('annotate') === '1'
-
 function ensureInfo(model) {
-  return { title: model?.name || '', difficulty: 3, annotations: [], ...model?.info }
+  return { title: model?.name || '', difficulty: 3, ...model?.info }
 }
 
 function withCorsProxy(url) {
@@ -31,8 +28,6 @@ function useModelCache(models, selectedId, compareId) {
 
   useEffect(() => {
     const urlsToKeep = []
-    
-    // Garder en mémoire le sélectionné, sa phase 2, et la comparaison
     const selected = models.find(m => m.id === selectedId)
     const compare = models.find(m => m.id === compareId)
     
@@ -40,7 +35,6 @@ function useModelCache(models, selectedId, compareId) {
     if (selected?.altUrl) urlsToKeep.push(selected.altUrl)
     if (compare?.url) urlsToKeep.push(compare.url)
 
-    // Précharger le boss suivant silencieusement
     const nextIdx = models.findIndex(m => m.id === selectedId) + 1
     if (models[nextIdx]?.url) {
       urlsToKeep.push(models[nextIdx].url)
@@ -51,7 +45,6 @@ function useModelCache(models, selectedId, compareId) {
       if (!cacheRef.current.includes(url)) cacheRef.current.push(url)
     })
 
-    // Éliminer les anciens GLB (garde les 5 derniers)
     while (cacheRef.current.length > 5) {
       const oldest = cacheRef.current.shift()
       if (!urlsToKeep.includes(oldest)) {
@@ -67,7 +60,7 @@ class ViewerErrorBoundary extends Component {
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidUpdate(prevProps) { if (prevProps.url !== this.props.url) this.setState({ hasError: false }) }
   render() {
-    if (this.state.hasError) return null // L'UI externe gérera le texte d'erreur
+    if (this.state.hasError) return null
     return this.props.children
   }
 }
@@ -113,25 +106,14 @@ function AuraLight({ difficulty, position }) {
   return <pointLight position={position} intensity={2} distance={5} color={color} />
 }
 
-function Annotations({ data, visible }) {
-  if (!visible || !data?.length) return null
-  return data.map((ann) => (
-    <Html key={ann.id} position={ann.position} distanceFactor={6} occlude style={{ pointerEvents: 'none' }}>
-      <div className="annotation-pin">
-        <span className="annotation-number">{ann.id}</span>
-        <span className="annotation-label">{ann.label}</span>
-      </div>
-    </Html>
-  ))
-}
-
-function EldenModel({ url, position = [0, 0, 0], annotations, showAnnotations }) {
+function EldenModel({ url, position = [0, 0, 0] }) {
   const gltf = useGLTF(url)
   const groupRef = useRef()
   const [spawnTime, setSpawnTime] = useState(Date.now())
 
   useEffect(() => setSpawnTime(Date.now()), [url])
 
+  // Restauration de la logique des matériaux originaux (solide, pas de transparence)
   const { object, scale } = useMemo(() => {
     const root = gltf.scene.clone(true)
     root.traverse((node) => {
@@ -139,7 +121,11 @@ function EldenModel({ url, position = [0, 0, 0], annotations, showAnnotations })
         node.castShadow = true; node.receiveShadow = true
         if (node.material) {
           const mats = Array.isArray(node.material) ? node.material : [node.material]
-          mats.forEach(m => { m.side = THREE.DoubleSide; m.envMapIntensity = 1.2 })
+          mats.forEach(m => { 
+            m.side = THREE.DoubleSide
+            m.envMapIntensity = 1.2
+            m.needsUpdate = true
+          })
         }
       }
     })
@@ -151,40 +137,18 @@ function EldenModel({ url, position = [0, 0, 0], annotations, showAnnotations })
     return { object: root, scale: 3.5 / longest }
   }, [gltf.scene])
 
-  // Transition d'entrée : Dissolution inverse depuis le sol (Y + Opacité)
+  // Transition d'entrée fluide (Échelle & Y uniquement, sans toucher à l'alpha)
   useFrame(() => {
     if (!groupRef.current) return
-    const t = Math.min((Date.now() - spawnTime) / 600, 1) // 600ms
-    const ease = 1 - Math.pow(1 - t, 3)
-    
+    const t = Math.min((Date.now() - spawnTime) / 500, 1) // 500ms
+    const ease = 1 - Math.pow(1 - t, 3) // Cubic ease out
     groupRef.current.position.y = position[1] - 1 + ease
-    groupRef.current.scale.setScalar(scale * (0.9 + ease * 0.1))
-
-    if (t < 1) {
-      groupRef.current.traverse(n => {
-        if (n.isMesh && n.material) {
-          const mats = Array.isArray(n.material) ? n.material : [n.material]
-          mats.forEach(m => { m.transparent = true; m.opacity = ease; m.needsUpdate = true })
-        }
-      })
-    }
+    groupRef.current.scale.setScalar(scale * (0.8 + ease * 0.2))
   })
 
-  // Mode placement d'annotation
-  const handlePointerDown = (e) => {
-    if (!IS_ANNOTATE_MODE) return
-    e.stopPropagation()
-    console.log(JSON.stringify({
-      id: Math.floor(Math.random() * 100),
-      label: "Nouveau Point",
-      position: [parseFloat(e.point.x.toFixed(2)), parseFloat(e.point.y.toFixed(2)), parseFloat(e.point.z.toFixed(2))]
-    }))
-  }
-
   return (
-    <group ref={groupRef} position={position} onPointerDown={handlePointerDown}>
+    <group ref={groupRef} position={position}>
       <primitive object={object} />
-      <Annotations data={annotations} visible={showAnnotations} />
     </group>
   )
 }
@@ -192,7 +156,7 @@ function EldenModel({ url, position = [0, 0, 0], annotations, showAnnotations })
 // ─── Scène Globale (Un seul Canvas) ───────────────────────────────────────────
 function Scene({ 
   selected, compare, altActive, 
-  autoRotate, showAnnotations, pixelArt, 
+  autoRotate, pixelArt, 
   orbitRef, glRef 
 }) {
   const { gl } = useThree()
@@ -226,12 +190,7 @@ function Scene({
         {/* Boss principal */}
         {sUrl && (
           <ViewerErrorBoundary url={sUrl}>
-            <EldenModel 
-              url={sUrl} 
-              position={isCompare ? [-2.5, 0, 0] : [0, 0, 0]} 
-              annotations={ensureInfo(selected).annotations} 
-              showAnnotations={showAnnotations} 
-            />
+            <EldenModel url={sUrl} position={isCompare ? [-2.5, 0, 0] : [0, 0, 0]} />
             <AuraLight difficulty={sDiff} position={isCompare ? [-2.5, -1, 0] : [0, -1, 0]} />
             <AshParticles color={AURA_COLORS[sDiff]} />
           </ViewerErrorBoundary>
@@ -240,12 +199,7 @@ function Scene({
         {/* Boss comparaison */}
         {isCompare && cUrl && (
           <ViewerErrorBoundary url={cUrl}>
-            <EldenModel 
-              url={cUrl} 
-              position={[2.5, 0, 0]} 
-              annotations={ensureInfo(compare).annotations} 
-              showAnnotations={showAnnotations} 
-            />
+            <EldenModel url={cUrl} position={[2.5, 0, 0]} />
             <AuraLight difficulty={cDiff} position={[2.5, -1, 0]} />
             <AshParticles color={AURA_COLORS[cDiff]} />
           </ViewerErrorBoundary>
@@ -270,26 +224,52 @@ function Scene({
   )
 }
 
-// ─── Composants UI ────────────────────────────────────────────────────────────
+// ─── Composants UI (Bottom Panels) ────────────────────────────────────────────
 function CardsZones({ info }) {
-  const cards = [
-    { key: 'arena', icon: '⌖', label: 'Arène', value: info.arena || info.area },
-    { key: 'weapon', icon: '⚔', label: 'Arme signature', value: info.weapon || info.keyMoves },
-    { key: 'lore', icon: '📜', label: 'Lore', value: info.lore || info.affiliation },
-    { key: 'drops', icon: '◈', label: 'Drops', value: info.drops }
-  ].filter(c => c.value)
-
-  if (!cards.length) return null
+  // Ici on simule l'intégration de médias (images ou canvas miniatures)
+  // Tu pourras remplacer l'intérieur des .bp-media-slot par de vraies balises <img> ou <video>
   return (
-    <div className="cards-zones-wrapper">
-      <div className="cards-zones">
-        {cards.map(card => (
-          <div key={card.key} className="cz-card">
-            <div className="cz-header"><span className="cz-icon">{card.icon}</span><span className="cz-label">{card.label}</span></div>
-            <p className="cz-value">{card.value}</p>
+    <div className="bottom-panels">
+      
+      {/* Panel 1 : Arène & Environnement */}
+      <div className="bp-card bp-large">
+        <div className="bp-header">
+          <span className="bp-icon">⌖</span>
+          <span className="bp-title">Arène & Environnement</span>
+        </div>
+        <div className="bp-content">
+          <div className="bp-media-slot" style={{ backgroundImage: `url(${info.arenaImage || ''})` }}>
+            {!info.arenaImage && <span className="bp-media-placeholder">Média Arène</span>}
           </div>
-        ))}
+          <p className="bp-text">{info.arena || info.area || "Informations sur l'arène indisponibles."}</p>
+        </div>
       </div>
+
+      {/* Panel 2 : Arsenal & Attaques */}
+      <div className="bp-card bp-large">
+        <div className="bp-header">
+          <span className="bp-icon">⚔</span>
+          <span className="bp-title">Arsenal & Mouvements</span>
+        </div>
+        <div className="bp-content">
+          <div className="bp-media-slot" style={{ backgroundImage: `url(${info.weaponImage || ''})` }}>
+            {!info.weaponImage && <span className="bp-media-placeholder">Média Arme</span>}
+          </div>
+          <p className="bp-text">{info.weapon || info.keyMoves || "Informations sur l'arme indisponibles."}</p>
+        </div>
+      </div>
+
+      {/* Panel 3 : Butin & Drops (Plus petit) */}
+      <div className="bp-card bp-small">
+        <div className="bp-header">
+          <span className="bp-icon">◈</span>
+          <span className="bp-title">Butin</span>
+        </div>
+        <div className="bp-content">
+          <p className="bp-text">{info.drops || "Aucun butin répertorié."}</p>
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -325,7 +305,6 @@ export default function App() {
   const [filterDiff, setFilterDiff] = useState(0)
   
   const [autoRotate, setAutoRotate] = useState(true)
-  const [showAnnotations, setShowAnnotations] = useState(true)
   const [altActive, setAltActive] = useState(false)
   const [pixelArt, setPixelArt] = useState(false)
   const [showTip, setShowTip] = useState(true)
@@ -371,9 +350,8 @@ export default function App() {
         case 'arrowleft': if (idx > 0) setSelectedId(models[idx - 1].id); break
         case 'arrowright': if (idx < models.length - 1) setSelectedId(models[idx + 1].id); break
         case ' ': e.preventDefault(); setAutoRotate(v => !v); break
-        case 'a': setShowAnnotations(v => !v); break
         case 'p': setPixelArt(v => !v); break
-        case 'f': document.querySelector('.main-pane')?.requestFullscreen().catch(()=>{}); break
+        case 'f': document.querySelector('.viewer-wrapper')?.requestFullscreen().catch(()=>{}); break
         case 'escape': setCompareId(null); break
       }
     }
@@ -389,7 +367,6 @@ export default function App() {
     return res
   }, [models, search, filterDiff])
 
-  // Boss similaires (pour le panel droit)
   const similarBosses = useMemo(() => {
     if (!selectedModel) return []
     const info = ensureInfo(selectedModel)
@@ -442,8 +419,9 @@ export default function App() {
           </ul>
         </aside>
 
-        {/* Viewer 3D Persistant */}
+        {/* Colonne Centrale : Viewer 3D + Panneaux Médias */}
         <main className="main-pane" onPointerDown={() => setShowTip(false)}>
+          
           <div className="viewer-wrapper">
             <Canvas 
               className="viewer-canvas" 
@@ -452,12 +430,12 @@ export default function App() {
             >
               <Scene 
                 selected={selectedModel} compare={compareModel} altActive={altActive}
-                autoRotate={autoRotate} showAnnotations={showAnnotations} pixelArt={pixelArt}
+                autoRotate={autoRotate} pixelArt={pixelArt}
                 orbitRef={orbitRef} glRef={glRef}
               />
             </Canvas>
 
-            {/* Overlays */}
+            {/* Overlays Canvas */}
             {showTip && <div className="viewer-tip">Drag to rotate · Scroll to zoom · Ctrl+drag to pan</div>}
             {pixelArt && <div className="pixel-art-indicator">Pixel Art ON</div>}
             {!compareId && <div className="viewer-boss-name">{selectedModel?.name}</div>}
@@ -473,7 +451,6 @@ export default function App() {
             <div className="viewer-controls-bar">
               <button className={`vc-btn ${autoRotate?'active':''}`} onClick={() => setAutoRotate(!autoRotate)} title="Space">⟲ Rotate</button>
               <button className="vc-btn" onClick={() => orbitRef.current?.reset()}>◉ Reset</button>
-              <button className={`vc-btn ${showAnnotations?'active':''}`} onClick={() => setShowAnnotations(!showAnnotations)} title="A">⌖ Annotations</button>
               {selectedModel?.altUrl && !compareId && (
                 <button className={`vc-btn ${altActive?'active':''}`} onClick={() => setAltActive(!altActive)}>② Phase 2</button>
               )}
@@ -481,8 +458,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Zones UI du bas */}
+          {/* Zones UI du bas (remplace l'ancien système de cartes absolues) */}
           {compareId ? <CompareTable m1={selectedModel} m2={compareModel} /> : (selectedModel && <CardsZones info={ensureInfo(selectedModel)} />)}
+
         </main>
 
         {/* Panneau Droit (Info) */}
@@ -503,6 +481,15 @@ export default function App() {
                   <div className="info-field-value">{ensureInfo(selectedModel).keyMoves}</div>
                   <div className="info-field-label" style={{marginTop: '0.5rem'}}>Stratégie</div>
                   <div className="info-field-value">{ensureInfo(selectedModel).strategyNotes}</div>
+                </div>
+              </details>
+
+              <details className="info-accordion" open>
+                <summary>Lore</summary>
+                <div className="info-accordion-body">
+                  <div className="info-field-value" style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>
+                    {ensureInfo(selectedModel).lore || "Aucune archive trouvée."}
+                  </div>
                 </div>
               </details>
 
