@@ -65,7 +65,7 @@
 
   "godfrey-hoarah-loux": {
     "idle":   "/sprites/godfrey-idle.gif",
-    "attack": "/sprites/godfrey-attack.gif"
+    "attack": "/sprites/godfrey-animation.gif"
   },
 
   "radagon-elden-beast": {
