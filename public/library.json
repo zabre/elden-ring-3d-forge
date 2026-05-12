@@ -4,8 +4,8 @@
     "name": "Margit, the Fell Omen",
     "modelPath": "models/margit-phase1.glb",
     "modelPath2": "models/margit-phase2.glb",
-    "remoteUrl": "",
-    "remoteUrl2": "",
+    "remoteUrl": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/margitt-1.glb",
+    "remoteUrl2": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/margit-2.glb",
     "info": {
       "title": "Margit, the Fell Omen",
       "difficulty": 3,
@@ -46,8 +46,8 @@
     "name": "Rennala, Queen of the Full Moon",
     "modelPath": "models/rennala-phase1.glb",
     "modelPath2": "models/rennala-phase2.glb",
-    "remoteUrl": "",
-    "remoteUrl2": "",
+    "remoteUrl": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/rennala-1.glb",
+    "remoteUrl2": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/rennala-2.glb",
     "info": {
       "title": "Rennala, Queen of the Full Moon",
       "difficulty": 2,
