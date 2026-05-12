@@ -22,23 +22,51 @@ function ensureInfo(model) {
   return { title: model?.name || '', difficulty: 3, ...model?.info }
 }
 
+// ─── CORS PROXY ───────────────────────────────────────────────────────────────
+// R2 public buckets support CORS natively — no proxy needed.
+// Only kept as fallback for legacy Google Drive URLs.
 function withCorsProxy(url) {
   if (!url) return url
   if (url.includes('drive.google.com')) return `https://corsproxy.io/?url=${encodeURIComponent(url)}`
   return url
 }
 
+// ─── MODEL CACHE + PRELOAD ────────────────────────────────────────────────────
+// Keeps up to MAX_CACHE models warm. Also preloads the previous and next
+// boss models in the list so switching feels near-instant.
+const MAX_CACHE = 8
+
 function useModelCache(models, selectedId) {
   const cacheRef = useRef([])
+
   useEffect(() => {
+    if (!models.length) return
+
+    const selectedIdx = models.findIndex(m => m.id === selectedId)
+    const selected = models[selectedIdx]
+
+    // Gather URLs to keep warm: current + both phases
     const urlsToKeep = []
-    const selected = models.find(m => m.id === selectedId)
-    if (selected?.url) urlsToKeep.push(selected.url)
+    if (selected?.url)    urlsToKeep.push(selected.url)
     if (selected?.altUrl) urlsToKeep.push(selected.altUrl)
-    urlsToKeep.forEach(url => {
-      if (!cacheRef.current.includes(url)) cacheRef.current.push(url)
+
+    // Preload adjacent bosses (prev + next)
+    const adjacents = [
+      models[selectedIdx - 1],
+      models[selectedIdx + 1],
+    ].filter(Boolean)
+
+    adjacents.forEach(m => {
+      if (m?.url)    { useGLTF.preload(m.url);    if (!urlsToKeep.includes(m.url))    urlsToKeep.push(m.url) }
+      if (m?.altUrl) { useGLTF.preload(m.altUrl); if (!urlsToKeep.includes(m.altUrl)) urlsToKeep.push(m.altUrl) }
     })
-    while (cacheRef.current.length > 5) {
+
+    // Register current model URLs in cache list
+    if (selected?.url    && !cacheRef.current.includes(selected.url))    cacheRef.current.push(selected.url)
+    if (selected?.altUrl && !cacheRef.current.includes(selected.altUrl)) cacheRef.current.push(selected.altUrl)
+
+    // Evict oldest entries beyond MAX_CACHE
+    while (cacheRef.current.length > MAX_CACHE) {
       const oldest = cacheRef.current.shift()
       if (!urlsToKeep.includes(oldest)) {
         try { useGLTF.clear(oldest) } catch {}
@@ -284,8 +312,6 @@ function JRPGHearts({ difficulty }) {
 }
 
 // ─── GIF PLAYER ────────────────────────────────────────────────────────────────────
-// Affiche le GIF idle ou attack selon l'état. Force le rechargement du GIF
-// quand l'état change (trick src + timestamp) pour redémarrer l'animation.
 function GifPlayer({ animDef, state = 'idle', auraColor }) {
   const [src, setSrc] = useState('')
   const prevState = useRef('')
@@ -296,7 +322,6 @@ function GifPlayer({ animDef, state = 'idle', auraColor }) {
       ? animDef.attack
       : animDef.idle
 
-    // Force reload du GIF en ajoutant un timestamp → redémarre l'animation depuis frame 0
     if (prevState.current !== state) {
       setSrc(`${target}?t=${Date.now()}`)
       prevState.current = state
@@ -336,7 +361,6 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
   const animDef   = selected?.id ? pixelAnimations[selected.id] : null
   const animState = altActive ? 'attack' : 'idle'
 
-  // Fallbacks si pas de GIF
   const spriteUrl = altActive
     ? (selected?.spriteAttack || selected?.spriteIdle || '')
     : (selected?.spriteIdle || '')
@@ -370,7 +394,6 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
 
       <div className="retro-ground-shadow" aria-hidden="true" />
 
-      {/* ─── SPRITE : GIF (priorité) > image fixe > placeholder SVG ─── */}
       <div className="retro-sprite-wrap" key={`${selected?.id}-${animState}`}>
         {animDef
           ? <GifPlayer animDef={animDef} state={animState} auraColor={auraColor} />
@@ -380,7 +403,6 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
         }
       </div>
 
-      {/* HUD haut gauche */}
       <div className="jrpg-hud-topleft">
         <JRPGHearts difficulty={diff} />
         <div className="jrpg-hud-mana-row">
@@ -390,7 +412,6 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
         </div>
       </div>
 
-      {/* HUD bas centré */}
       <div className="jrpg-boss-hud">
         <div className="jrpg-boss-hud-inner">
           <div className="jrpg-boss-header">
