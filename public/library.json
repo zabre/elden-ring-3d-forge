@@ -215,7 +215,7 @@
     "modelPath": "models/maliketh-phase1.glb",
     "modelPath2": "models/maliketh-phase2.glb",
     "remoteUrl": "",
-    "remoteUrl2": "",
+    "remoteUrl2": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/maliketh-2.glb",
     "info": {
       "title": "Maliketh, the Black Blade",
       "difficulty": 5,
