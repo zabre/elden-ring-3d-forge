@@ -179,7 +179,7 @@
   },
 
   "godfrey-hoarah-loux": {
-    "spriteSheet": "/sprites/godfrey.png",
+    "spriteSheet": "/sprites/godfrey-animation.gif",
     "frameWidth": 80,
     "frameHeight": 96,
     "scale": 3,
