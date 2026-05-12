@@ -214,7 +214,7 @@
     "name": "Maliketh, the Black Blade",
     "modelPath": "models/maliketh-phase1.glb",
     "modelPath2": "models/maliketh-phase2.glb",
-    "remoteUrl": "",
+    "remoteUrl": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/maliketh-1-beast-cleargy.glb",
     "remoteUrl2": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/maliketh-2.glb",
     "info": {
       "title": "Maliketh, the Black Blade",
@@ -235,8 +235,8 @@
     "name": "Godfrey, First Elden Lord / Hoarah Loux, Warrior",
     "modelPath": "models/godfrey-phase1.glb",
     "modelPath2": "models/hoarah-loux-phase2.glb",
-    "remoteUrl": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/hoara.glb",
-    "remoteUrl2": "",
+    "remoteUrl": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/hoarah-2.glb",
+    "remoteUrl2": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/hoara.glb",
     "info": {
       "title": "Godfrey, First Elden Lord / Hoarah Loux, Warrior",
       "difficulty": 5,
