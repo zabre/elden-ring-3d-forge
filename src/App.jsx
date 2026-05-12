@@ -9,14 +9,13 @@ const LIBRARY_URL    = `${import.meta.env.BASE_URL}library.json`
 const PIXEL_ANIM_URL = `${import.meta.env.BASE_URL}pixel-animations.json`
 const AURA_COLORS = ['#ffffff', '#4a90d9', '#4caf7d', '#e0a030', '#e06020', '#c0392b']
 
-// Palettes JRPG 16-bit — tons sépia/brun/rouille + accents riches
 const PIXEL_PALETTES = [
   { bg: '#1c1610', mid: '#2e2518', fg: '#c8b89a', accent: '#e8d5b0', shadow: '#0d0b08', hp: '#a8956e', name: 'VOYAGEUR' },
   { bg: '#0e1620', mid: '#1a2535', fg: '#8ab4d8', accent: '#b8d4f0', shadow: '#070d14', hp: '#5a8ab0', name: 'GARDIEN' },
   { bg: '#101a10', mid: '#1a2e1a', fg: '#8ab88a', accent: '#b0d8b0', shadow: '#080e08', hp: '#58985a', name: 'SENTINELLE' },
-  { bg: '#1e1408', mid: '#302010', fg: '#d8a860', accent: '#f0c878', shadow: '#100a04', hp: '#c08030', name: 'CONQUÉRANT' },
+  { bg: '#1e1408', mid: '#302010', fg: '#d8a860', accent: '#f0c878', shadow: '#100a04', hp: '#c08030', name: 'CONQU\u00c9RANT' },
   { bg: '#1e0e08', mid: '#300e08', fg: '#d87850', accent: '#f09060', shadow: '#100604', hp: '#b85030', name: 'DESTRUCTEUR' },
-  { bg: '#180810', mid: '#281018', fg: '#d05878', accent: '#e87898', shadow: '#0e0408', hp: '#a02848', name: 'DÉVASTATEUR' },
+  { bg: '#180810', mid: '#281018', fg: '#d05878', accent: '#e87898', shadow: '#0e0408', hp: '#a02848', name: 'D\u00c9VASTATEUR' },
 ]
 
 function ensureInfo(model) {
@@ -168,7 +167,7 @@ function Scene({ selected, altActive, autoRotate, orbitRef, glRef }) {
   )
 }
 
-// ─── PIXEL DUST PARTICLES ─────────────────────────────────────────────────────
+// ─── PIXEL DUST ───────────────────────────────────────────────────────────────────
 function PixelDust({ palette }) {
   const canvasRef = useRef()
   useEffect(() => {
@@ -271,7 +270,7 @@ function JRPGMPBar({ difficulty, palette }) {
   )
 }
 
-// ─── JRPG HEARTS ROW ──────────────────────────────────────────────────────────
+// ─── JRPG HEARTS ────────────────────────────────────────────────────────────────
 function JRPGHearts({ difficulty }) {
   const total = 3
   const full = Math.max(0, total - Math.floor((difficulty - 1) / 2))
@@ -284,115 +283,60 @@ function JRPGHearts({ difficulty }) {
   )
 }
 
-// ─── PIXEL SPRITE PLAYER ──────────────────────────────────────────────────────
-// Lit un spritesheet PNG piloté par pixel-animations.json
-// animDef = entrée du JSON pour ce boss | state = 'idle' | 'attack' | 'hit' | ...
-function PixelSpritePlayer({ animDef, state = 'idle', auraColor }) {
-  const canvasRef = useRef()
-  const rafRef    = useRef()
-  const frameRef  = useRef(0)
-  const imgRef    = useRef(null)
-  const loadedSrc = useRef(null)
-
-  // Résout l'animation cible, avec fallback sur idle
-  const anim = animDef?.animations?.[state] ?? animDef?.animations?.idle
+// ─── GIF PLAYER ────────────────────────────────────────────────────────────────────
+// Affiche le GIF idle ou attack selon l'état. Force le rechargement du GIF
+// quand l'état change (trick src + timestamp) pour redémarrer l'animation.
+function GifPlayer({ animDef, state = 'idle', auraColor }) {
+  const [src, setSrc] = useState('')
+  const prevState = useRef('')
 
   useEffect(() => {
-    if (!animDef || !anim) return
-    const canvas = canvasRef.current
-    if (!canvas) return
+    if (!animDef) return
+    const target = (state === 'attack' && animDef.attack)
+      ? animDef.attack
+      : animDef.idle
 
-    const ctx = canvas.getContext('2d')
-    const { frameWidth: fw, frameHeight: fh, scale = 3 } = animDef
-    canvas.width  = fw * scale
-    canvas.height = fh * scale
-    ctx.imageSmoothingEnabled = false // OBLIGATOIRE pour pixel art net
-
-    frameRef.current = 0
-    const interval = 1000 / anim.fps
-    let lastTime = 0
-
-    const drawFrame = (timestamp) => {
-      if (timestamp - lastTime >= interval) {
-        lastTime = timestamp
-        const img = imgRef.current
-        if (img && img.complete) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height)
-          ctx.drawImage(
-            img,
-            frameRef.current * fw,  // sx : colonne de la frame
-            anim.row * fh,          // sy : ligne de l'animation
-            fw, fh,                 // taille source
-            0, 0,                   // position dest
-            fw * scale, fh * scale  // taille dest agrandie
-          )
-        }
-        // Avance la frame (boucle ou arrêt)
-        const next = frameRef.current + 1
-        if (next >= anim.frames) {
-          frameRef.current = anim.loop ? 0 : anim.frames - 1
-        } else {
-          frameRef.current = next
-        }
-      }
-      rafRef.current = requestAnimationFrame(drawFrame)
+    // Force reload du GIF en ajoutant un timestamp → redémarre l'animation depuis frame 0
+    if (prevState.current !== state) {
+      setSrc(`${target}?t=${Date.now()}`)
+      prevState.current = state
+    } else if (!src) {
+      setSrc(target)
     }
+  }, [animDef, state])
 
-    // Charge l'image une seule fois (mise en cache par le navigateur)
-    if (loadedSrc.current !== animDef.spriteSheet) {
-      const img = new Image()
-      img.src = animDef.spriteSheet
-      img.onload = () => { imgRef.current = img; loadedSrc.current = animDef.spriteSheet }
-      img.onerror = () => console.warn(`[PixelSpritePlayer] Image introuvable : ${animDef.spriteSheet}`)
-      imgRef.current = img
-    }
+  if (!animDef || !src) return null
 
-    rafRef.current = requestAnimationFrame(drawFrame)
-    return () => cancelAnimationFrame(rafRef.current)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animDef, anim?.row, anim?.frames, anim?.fps, anim?.loop])
-
-  // Reset frame à 0 quand l'état change
-  useEffect(() => { frameRef.current = 0 }, [state])
-
-  if (!animDef) return null
-
-  const { frameWidth: fw, frameHeight: fh, scale = 3, offsetY = 0 } = animDef
   return (
-    <canvas
-      ref={canvasRef}
-      className="pixel-sprite-canvas"
-      width={fw * scale}
-      height={fh * scale}
+    <img
+      key={src}
+      src={src}
+      alt=""
+      className="gif-sprite"
       style={{
         imageRendering: 'pixelated',
-        display: 'block',
-        marginTop: offsetY ? `${offsetY}px` : undefined,
         filter: [
           `drop-shadow(0 0 18px ${auraColor})`,
           `drop-shadow(0 0 6px ${auraColor})`,
-          'drop-shadow(0 10px 20px rgba(0,0,0,0.95))',
+          'drop-shadow(0 12px 24px rgba(0,0,0,0.95))',
         ].join(' '),
       }}
-      aria-label="Sprite animé du boss"
+      draggable={false}
     />
   )
 }
 
-// ─── RETRO VIEWER — JRPG 2D STYLE ────────────────────────────────────────────
+// ─── RETRO VIEWER ─────────────────────────────────────────────────────────────────
 function RetroViewer({ selected, altActive, pixelAnimations }) {
-  const info = ensureInfo(selected)
-  const diff = Math.max(0, Math.min(5, info.difficulty || 3))
+  const info      = ensureInfo(selected)
+  const diff      = Math.max(0, Math.min(5, info.difficulty || 3))
   const palette   = PIXEL_PALETTES[diff]
   const auraColor = AURA_COLORS[diff]
 
-  // Résolution de l'animDef depuis pixel-animations.json
-  const animDef = selected?.id ? pixelAnimations[selected.id] : null
-
-  // État d'animation : attack si Phase 2 active, sinon idle
+  const animDef   = selected?.id ? pixelAnimations[selected.id] : null
   const animState = altActive ? 'attack' : 'idle'
 
-  // Fallback image (si pas d'animDef)
+  // Fallbacks si pas de GIF
   const spriteUrl = altActive
     ? (selected?.spriteAttack || selected?.spriteIdle || '')
     : (selected?.spriteIdle || '')
@@ -412,41 +356,31 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
         '--pal-hp':     palette.hp,
       }}
     >
-      {/* Ciel dégradé + nuages pixel */}
       <div className="retro-sky"    aria-hidden="true" />
       <div className="retro-clouds" aria-hidden="true" />
 
-      {/* Fond arène */}
       {bgUrl
         ? <div className="retro-arena-bg" style={{ backgroundImage: `url(${bgUrl})` }} />
         : <div className="retro-arena-bg retro-arena-placeholder" />
       }
 
-      {/* Sol isométrique */}
       <div className="retro-floor" aria-hidden="true">
         <div className="retro-floor-circle" />
       </div>
 
-      {/* Ombre boss */}
       <div className="retro-ground-shadow" aria-hidden="true" />
 
-      {/* ─── SPRITE : PixelSpritePlayer (animDef) ou fallback ─────────────── */}
+      {/* ─── SPRITE : GIF (priorité) > image fixe > placeholder SVG ─── */}
       <div className="retro-sprite-wrap" key={`${selected?.id}-${animState}`}>
         {animDef
-          ? (
-              <PixelSpritePlayer
-                animDef={animDef}
-                state={animState}
-                auraColor={auraColor}
-              />
-            )
+          ? <GifPlayer animDef={animDef} state={animState} auraColor={auraColor} />
           : spriteUrl
             ? <img className="retro-sprite" src={spriteUrl} alt={selected?.name || 'Boss'} />
             : <RetroPlaceholderSprite name={selected?.name} color={auraColor} palette={palette} altActive={altActive} />
         }
       </div>
 
-      {/* HUD — coins vie joueur (haut gauche) */}
+      {/* HUD haut gauche */}
       <div className="jrpg-hud-topleft">
         <JRPGHearts difficulty={diff} />
         <div className="jrpg-hud-mana-row">
@@ -456,7 +390,7 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
         </div>
       </div>
 
-      {/* HUD — nameplate boss (bas centré — style JRPG) */}
+      {/* HUD bas centré */}
       <div className="jrpg-boss-hud">
         <div className="jrpg-boss-hud-inner">
           <div className="jrpg-boss-header">
@@ -472,7 +406,7 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
               ))}
             </div>
             {animDef && (
-              <span className="jrpg-anim-badge" style={{ borderColor: palette.accent, color: palette.accent }}>🎞 ANIM</span>
+              <span className="jrpg-anim-badge" style={{ borderColor: palette.accent, color: palette.accent }}>🎞 GIF</span>
             )}
             {altActive && (
               <span className="jrpg-phase-badge" style={{ borderColor: palette.accent, color: palette.accent }}>⚔ PHASE 2</span>
@@ -481,24 +415,19 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
         </div>
       </div>
 
-      {/* Particules poussière */}
       <PixelDust palette={palette} />
 
-      {/* Coins d'interface */}
       <div className="retro-corner retro-corner-tl" style={{ '--c': palette.accent }} aria-hidden="true" />
       <div className="retro-corner retro-corner-tr" style={{ '--c': palette.accent }} aria-hidden="true" />
       <div className="retro-corner retro-corner-bl" style={{ '--c': palette.accent }} aria-hidden="true" />
       <div className="retro-corner retro-corner-br" style={{ '--c': palette.accent }} aria-hidden="true" />
-
-      {/* Scanlines légères */}
       <div className="retro-scanlines" aria-hidden="true" />
-      {/* Vignette douce */}
-      <div className="retro-vignette" aria-hidden="true" />
+      <div className="retro-vignette"  aria-hidden="true" />
     </div>
   )
 }
 
-// ─── SPRITE PLACEHOLDER ENRICHI ────────────────────────────────────────────────
+// ─── PLACEHOLDER SVG ──────────────────────────────────────────────────────────────
 function RetroPlaceholderSprite({ name, color, palette, altActive }) {
   return (
     <div className="retro-placeholder-sprite" style={{ '--aura': color }}>
@@ -543,7 +472,7 @@ function RetroPlaceholderSprite({ name, color, palette, altActive }) {
   )
 }
 
-// ─── TYPEWRITER EFFECT ─────────────────────────────────────────────────────────
+// ─── TYPEWRITER ────────────────────────────────────────────────────────────────────
 function Typewriter({ text, speed = 25 }) {
   const [displayed, setDisplayed] = useState('')
   useEffect(() => {
@@ -617,13 +546,12 @@ function CardsZones({ info, isPixelMode }) {
   )
 }
 
-// ─── GLITCH TRANSITION ────────────────────────────────────────────────────────
+// ─── GLITCH + TOGGLE ──────────────────────────────────────────────────────────────
 function GlitchTransition({ active }) {
   if (!active) return null
   return <div className="glitch-overlay" aria-hidden="true" />
 }
 
-// ─── PIXEL TOGGLE BUTTON ──────────────────────────────────────────────────────
 function PixelToggleButton({ isPixelMode, onClick }) {
   return (
     <button
@@ -640,16 +568,16 @@ function PixelToggleButton({ isPixelMode, onClick }) {
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [models, setModels]               = useState([])
-  const [pixelAnimations, setPixelAnimations] = useState({}) // ← nouveau
-  const [selectedId, setSelectedId]       = useState(new URLSearchParams(window.location.search).get('boss') || 'margit')
-  const [search, setSearch]               = useState('')
-  const [filterDiff, setFilterDiff]       = useState(0)
-  const [autoRotate, setAutoRotate]       = useState(true)
-  const [altActive, setAltActive]         = useState(false)
-  const [showTip, setShowTip]             = useState(true)
-  const [isPixelMode, setIsPixelMode]     = useState(false)
-  const [glitching, setGlitching]         = useState(false)
+  const [models, setModels]                   = useState([])
+  const [pixelAnimations, setPixelAnimations] = useState({})
+  const [selectedId, setSelectedId]           = useState(new URLSearchParams(window.location.search).get('boss') || 'margit')
+  const [search, setSearch]                   = useState('')
+  const [filterDiff, setFilterDiff]           = useState(0)
+  const [autoRotate, setAutoRotate]           = useState(true)
+  const [altActive, setAltActive]             = useState(false)
+  const [showTip, setShowTip]                 = useState(true)
+  const [isPixelMode, setIsPixelMode]         = useState(false)
+  const [glitching, setGlitching]             = useState(false)
 
   const orbitRef = useRef(); const glRef = useRef()
   const selectedModel = models.find(m => m.id === selectedId) || models[0]
@@ -667,7 +595,6 @@ export default function App() {
     setTimeout(() => { setIsPixelMode(v => !v); setGlitching(false) }, 480)
   }, [])
 
-  // Chargement en parallèle de library.json + pixel-animations.json
   useEffect(() => {
     Promise.all([
       fetch(LIBRARY_URL).then(r => r.json()),
@@ -675,16 +602,14 @@ export default function App() {
     ]).then(([libraryData, animData]) => {
       const parsed = libraryData.map((m, i) => ({
         ...m,
-        id: m.id || `boss-${i}`,
+        id:     m.id || `boss-${i}`,
         url:    withCorsProxy(m.remoteUrl)  || (m.modelPath  ? `${import.meta.env.BASE_URL}${m.modelPath}`  : ''),
         altUrl: withCorsProxy(m.remoteUrl2) || (m.modelPath2 ? `${import.meta.env.BASE_URL}${m.modelPath2}` : ''),
       }))
       setModels(parsed)
-      // Filtre les clés internes (_readme) avant de stocker
-      const cleaned = Object.fromEntries(
-        Object.entries(animData).filter(([k]) => !k.startsWith('_'))
+      setPixelAnimations(
+        Object.fromEntries(Object.entries(animData).filter(([k]) => !k.startsWith('_')))
       )
-      setPixelAnimations(cleaned)
     })
   }, [])
 
@@ -734,7 +659,7 @@ export default function App() {
               <summary>Filtres & Tags</summary>
               <div className="filter-options">
                 {[0,1,2,3,4,5].map(d => (
-                  <button key={d} className={`filter-btn ${filterDiff===d ? 'active':''}`} onClick={() => setFilterDiff(d)}>{d === 0 ? 'Tous' : `${d}★`}</button>
+                  <button key={d} className={`filter-btn ${filterDiff===d?'active':''}`} onClick={() => setFilterDiff(d)}>{d === 0 ? 'Tous' : `${d}★`}</button>
                 ))}
               </div>
             </details>
@@ -771,8 +696,8 @@ export default function App() {
                 {showTip && <div className="viewer-tip">Drag to rotate · Scroll to zoom · Ctrl+drag to pan</div>}
                 {selectedModel?.altUrl && (
                   <div className="phase-switcher">
-                    <button className={`ps-btn ${!altActive ? 'active' : ''}`} onClick={() => setAltActive(false)}>Phase 1</button>
-                    <button className={`ps-btn ${altActive ? 'active' : ''}`} onClick={() => setAltActive(true)}>Phase 2</button>
+                    <button className={`ps-btn ${!altActive?'active':''}`} onClick={() => setAltActive(false)}>Phase 1</button>
+                    <button className={`ps-btn ${altActive?'active':''}`}  onClick={() => setAltActive(true)}>Phase 2</button>
                   </div>
                 )}
                 {!selectedModel?.url && (
@@ -782,7 +707,7 @@ export default function App() {
                   </div>
                 )}
                 <div className="viewer-controls-bar">
-                  <button className={`vc-btn ${autoRotate?'active':''}`} onClick={() => setAutoRotate(!autoRotate)} title="Space">⟲ Rotate</button>
+                  <button className={`vc-btn ${autoRotate?'active':''}`} onClick={() => setAutoRotate(!autoRotate)}>⟲ Rotate</button>
                   <button className="vc-btn" onClick={() => orbitRef.current?.reset()}>◉ Reset</button>
                 </div>
               </>
@@ -790,15 +715,11 @@ export default function App() {
 
             {isPixelMode && (
               <>
-                <RetroViewer
-                  selected={selectedModel}
-                  altActive={altActive}
-                  pixelAnimations={pixelAnimations}
-                />
+                <RetroViewer selected={selectedModel} altActive={altActive} pixelAnimations={pixelAnimations} />
                 {selectedModel?.altUrl && (
                   <div className="phase-switcher">
-                    <button className={`ps-btn ${!altActive ? 'active' : ''}`} onClick={() => setAltActive(false)}>Phase 1</button>
-                    <button className={`ps-btn ${altActive ? 'active' : ''}`} onClick={() => setAltActive(true)}>Attaque !</button>
+                    <button className={`ps-btn ${!altActive?'active':''}`} onClick={() => setAltActive(false)}>Phase 1</button>
+                    <button className={`ps-btn ${altActive?'active':''}`}  onClick={() => setAltActive(true)}>Attaque !</button>
                   </div>
                 )}
               </>
@@ -832,7 +753,7 @@ export default function App() {
                       : ensureInfo(selectedModel).keyMoves
                     }
                   </div>
-                  <div className="info-field-label" style={{marginTop: '0.5rem'}}>Stratégie</div>
+                  <div className="info-field-label" style={{marginTop:'0.5rem'}}>Stratégie</div>
                   <div className="info-field-value">
                     {isPixelMode
                       ? <Typewriter text={ensureInfo(selectedModel).strategyNotes} speed={15} />
@@ -844,7 +765,7 @@ export default function App() {
               <details className="info-accordion" open>
                 <summary>Lore</summary>
                 <div className="info-accordion-body">
-                  <div className="info-field-value" style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>
+                  <div className="info-field-value" style={{ fontStyle:'italic', color:'var(--text-muted)' }}>
                     {isPixelMode
                       ? <Typewriter text={ensureInfo(selectedModel).lore || 'Aucune archive trouvée.'} speed={20} />
                       : (ensureInfo(selectedModel).lore || 'Aucune archive trouvée.')
