@@ -86,7 +86,12 @@ input { font: inherit; color: inherit; }
   padding: 1.25rem;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  height: 240px; /* BEAUCOUP PLUS GRAND : 240px au lieu de 160px */
+  
+  /* Utilisation de % (vh) : Un peu moins du quart de l'écran */
+  height: 23vh; 
+  /* Sécurités pour éviter un layout cassé sur très petits ou très grands écrans */
+  min-height: 220px; 
+  max-height: 320px;
 }
 
 .bp-card {
@@ -107,9 +112,9 @@ input { font: inherit; color: inherit; }
 
 .bp-content { display: flex; gap: 1rem; align-items: stretch; flex: 1; overflow: hidden; }
 
-/* Slots Images plus larges et plus ronds */
+/* Slots Images adaptés à la nouvelle hauteur */
 .bp-media-slot {
-  width: 160px; /* BEAUCOUP PLUS LARGE : 160px au lieu de 90px */
+  width: 180px; /* Légèrement élargi pour de meilleures proportions */
   height: 100%;
   background-color: var(--surface-2);
   border: 1px solid var(--border-soft);
