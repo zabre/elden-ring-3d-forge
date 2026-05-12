@@ -1,0 +1,210 @@
+{
+  "_readme": {
+    "description": "Animations 2D pixel art par boss. Chaque entrée utilise l'ID exact du boss dans library.json.",
+    "spriteSheet": "Chemin relatif à /public/ vers votre PNG spritesheet.",
+    "frameWidth": "Largeur d'une frame en pixels (toutes les frames ont la même taille).",
+    "frameHeight": "Hauteur d'une frame en pixels.",
+    "scale": "Facteur d'agrandissement canvas (recommandé : 2 à 4 pour pixel art net).",
+    "offsetY": "Décalage vertical en pixels CSS pour centrer/ajuster verticalement dans le viewer.",
+    "animations": {
+      "_info": "Clés possibles : idle, attack, hit, death, rage. Ajoutez librement vos propres états.",
+      "row": "Numéro de ligne (0-based) dans la spritesheet.",
+      "frames": "Nombre de frames sur cette ligne.",
+      "fps": "Vitesse de lecture en frames par seconde.",
+      "loop": "true = boucle continue, false = arrêt sur la dernière frame."
+    },
+    "spritesheet_format": "Horizontal : chaque ligne = 1 animation, chaque colonne = 1 frame. Toutes les cellules font frameWidth x frameHeight px. Export depuis Aseprite : Sprite Sheet > Horizontal Strip."
+  },
+
+  "margit": {
+    "spriteSheet": "/sprites/margit.png",
+    "frameWidth": 64,
+    "frameHeight": 80,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 4, "fps": 6,  "loop": true },
+      "attack": { "row": 1, "frames": 6, "fps": 12, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 8, "fps": 10, "loop": false }
+    }
+  },
+
+  "godrick": {
+    "spriteSheet": "/sprites/godrick.png",
+    "frameWidth": 80,
+    "frameHeight": 96,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 4, "fps": 5,  "loop": true },
+      "attack": { "row": 1, "frames": 8, "fps": 14, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 8, "fps": 10, "loop": false },
+      "rage":   { "row": 4, "frames": 5, "fps": 16, "loop": true }
+    }
+  },
+
+  "rennala": {
+    "spriteSheet": "/sprites/rennala.png",
+    "frameWidth": 64,
+    "frameHeight": 80,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 6, "fps": 7,  "loop": true },
+      "attack": { "row": 1, "frames": 6, "fps": 10, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 8, "fps": 10, "loop": false }
+    }
+  },
+
+  "starscourge-radahn": {
+    "spriteSheet": "/sprites/radahn.png",
+    "frameWidth": 96,
+    "frameHeight": 96,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 4, "fps": 5,  "loop": true },
+      "attack": { "row": 1, "frames": 8, "fps": 12, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 10, "fps": 10, "loop": false },
+      "rage":   { "row": 4, "frames": 6,  "fps": 16, "loop": true }
+    }
+  },
+
+  "morgott": {
+    "spriteSheet": "/sprites/morgott.png",
+    "frameWidth": 64,
+    "frameHeight": 80,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 4, "fps": 6,  "loop": true },
+      "attack": { "row": 1, "frames": 7, "fps": 13, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 8, "fps": 10, "loop": false }
+    }
+  },
+
+  "rykard": {
+    "spriteSheet": "/sprites/rykard.png",
+    "frameWidth": 96,
+    "frameHeight": 112,
+    "scale": 2,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 5, "fps": 6,  "loop": true },
+      "attack": { "row": 1, "frames": 8, "fps": 12, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 10, "fps": 10, "loop": false }
+    }
+  },
+
+  "fire-giant": {
+    "spriteSheet": "/sprites/fire-giant.png",
+    "frameWidth": 112,
+    "frameHeight": 112,
+    "scale": 2,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 4, "fps": 4,  "loop": true },
+      "attack": { "row": 1, "frames": 6, "fps": 10, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 10, "fps": 8, "loop": false },
+      "rage":   { "row": 4, "frames": 5,  "fps": 12, "loop": true }
+    }
+  },
+
+  "malenia": {
+    "spriteSheet": "/sprites/malenia.png",
+    "frameWidth": 64,
+    "frameHeight": 96,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":      { "row": 0, "frames": 6, "fps": 8,  "loop": true },
+      "attack":    { "row": 1, "frames": 8, "fps": 16, "loop": true },
+      "waterfowl": { "row": 2, "frames": 10, "fps": 20, "loop": false },
+      "hit":       { "row": 3, "frames": 3,  "fps": 18, "loop": false },
+      "death":     { "row": 4, "frames": 8,  "fps": 10, "loop": false },
+      "rage":      { "row": 5, "frames": 6,  "fps": 14, "loop": true }
+    }
+  },
+
+  "mohg": {
+    "spriteSheet": "/sprites/mohg.png",
+    "frameWidth": 64,
+    "frameHeight": 96,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 5, "fps": 6,  "loop": true },
+      "attack": { "row": 1, "frames": 7, "fps": 12, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 8, "fps": 10, "loop": false },
+      "rage":   { "row": 4, "frames": 5, "fps": 14, "loop": true }
+    }
+  },
+
+  "dragonlord-placidusax": {
+    "spriteSheet": "/sprites/placidusax.png",
+    "frameWidth": 128,
+    "frameHeight": 96,
+    "scale": 2,
+    "offsetY": -10,
+    "animations": {
+      "idle":   { "row": 0, "frames": 6, "fps": 6,  "loop": true },
+      "attack": { "row": 1, "frames": 8, "fps": 12, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 10, "fps": 10, "loop": false },
+      "rage":   { "row": 4, "frames": 6,  "fps": 14, "loop": true }
+    }
+  },
+
+  "maliketh": {
+    "spriteSheet": "/sprites/maliketh.png",
+    "frameWidth": 80,
+    "frameHeight": 96,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 5, "fps": 7,  "loop": true },
+      "attack": { "row": 1, "frames": 8, "fps": 16, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 8, "fps": 10, "loop": false },
+      "rage":   { "row": 4, "frames": 6, "fps": 18, "loop": true }
+    }
+  },
+
+  "godfrey-hoarah-loux": {
+    "spriteSheet": "/sprites/godfrey.png",
+    "frameWidth": 80,
+    "frameHeight": 96,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 4, "fps": 5,  "loop": true },
+      "attack": { "row": 1, "frames": 8, "fps": 14, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 8, "fps": 10, "loop": false },
+      "rage":   { "row": 4, "frames": 6, "fps": 16, "loop": true }
+    }
+  },
+
+  "radagon-elden-beast": {
+    "spriteSheet": "/sprites/radagon.png",
+    "frameWidth": 80,
+    "frameHeight": 96,
+    "scale": 3,
+    "offsetY": 0,
+    "animations": {
+      "idle":   { "row": 0, "frames": 5, "fps": 6,  "loop": true },
+      "attack": { "row": 1, "frames": 8, "fps": 13, "loop": true },
+      "hit":    { "row": 2, "frames": 3, "fps": 18, "loop": false },
+      "death":  { "row": 3, "frames": 10, "fps": 10, "loop": false },
+      "rage":   { "row": 4, "frames": 7,  "fps": 15, "loop": true }
+    }
+  }
+}

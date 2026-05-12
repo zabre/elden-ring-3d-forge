@@ -5,10 +5,11 @@ import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-thr
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 
-const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
+const LIBRARY_URL    = `${import.meta.env.BASE_URL}library.json`
+const PIXEL_ANIM_URL = `${import.meta.env.BASE_URL}pixel-animations.json`
 const AURA_COLORS = ['#ffffff', '#4a90d9', '#4caf7d', '#e0a030', '#e06020', '#c0392b']
 
-// Palettes JRPG 16-bit — tons sépia/brun/rouille + accents riches (style image de référence)
+// Palettes JRPG 16-bit — tons sépia/brun/rouille + accents riches
 const PIXEL_PALETTES = [
   { bg: '#1c1610', mid: '#2e2518', fg: '#c8b89a', accent: '#e8d5b0', shadow: '#0d0b08', hp: '#a8956e', name: 'VOYAGEUR' },
   { bg: '#0e1620', mid: '#1a2535', fg: '#8ab4d8', accent: '#b8d4f0', shadow: '#070d14', hp: '#5a8ab0', name: 'GARDIEN' },
@@ -283,34 +284,136 @@ function JRPGHearts({ difficulty }) {
   )
 }
 
+// ─── PIXEL SPRITE PLAYER ──────────────────────────────────────────────────────
+// Lit un spritesheet PNG piloté par pixel-animations.json
+// animDef = entrée du JSON pour ce boss | state = 'idle' | 'attack' | 'hit' | ...
+function PixelSpritePlayer({ animDef, state = 'idle', auraColor }) {
+  const canvasRef = useRef()
+  const rafRef    = useRef()
+  const frameRef  = useRef(0)
+  const imgRef    = useRef(null)
+  const loadedSrc = useRef(null)
+
+  // Résout l'animation cible, avec fallback sur idle
+  const anim = animDef?.animations?.[state] ?? animDef?.animations?.idle
+
+  useEffect(() => {
+    if (!animDef || !anim) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    const { frameWidth: fw, frameHeight: fh, scale = 3 } = animDef
+    canvas.width  = fw * scale
+    canvas.height = fh * scale
+    ctx.imageSmoothingEnabled = false // OBLIGATOIRE pour pixel art net
+
+    frameRef.current = 0
+    const interval = 1000 / anim.fps
+    let lastTime = 0
+
+    const drawFrame = (timestamp) => {
+      if (timestamp - lastTime >= interval) {
+        lastTime = timestamp
+        const img = imgRef.current
+        if (img && img.complete) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(
+            img,
+            frameRef.current * fw,  // sx : colonne de la frame
+            anim.row * fh,          // sy : ligne de l'animation
+            fw, fh,                 // taille source
+            0, 0,                   // position dest
+            fw * scale, fh * scale  // taille dest agrandie
+          )
+        }
+        // Avance la frame (boucle ou arrêt)
+        const next = frameRef.current + 1
+        if (next >= anim.frames) {
+          frameRef.current = anim.loop ? 0 : anim.frames - 1
+        } else {
+          frameRef.current = next
+        }
+      }
+      rafRef.current = requestAnimationFrame(drawFrame)
+    }
+
+    // Charge l'image une seule fois (mise en cache par le navigateur)
+    if (loadedSrc.current !== animDef.spriteSheet) {
+      const img = new Image()
+      img.src = animDef.spriteSheet
+      img.onload = () => { imgRef.current = img; loadedSrc.current = animDef.spriteSheet }
+      img.onerror = () => console.warn(`[PixelSpritePlayer] Image introuvable : ${animDef.spriteSheet}`)
+      imgRef.current = img
+    }
+
+    rafRef.current = requestAnimationFrame(drawFrame)
+    return () => cancelAnimationFrame(rafRef.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animDef, anim?.row, anim?.frames, anim?.fps, anim?.loop])
+
+  // Reset frame à 0 quand l'état change
+  useEffect(() => { frameRef.current = 0 }, [state])
+
+  if (!animDef) return null
+
+  const { frameWidth: fw, frameHeight: fh, scale = 3, offsetY = 0 } = animDef
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pixel-sprite-canvas"
+      width={fw * scale}
+      height={fh * scale}
+      style={{
+        imageRendering: 'pixelated',
+        display: 'block',
+        marginTop: offsetY ? `${offsetY}px` : undefined,
+        filter: [
+          `drop-shadow(0 0 18px ${auraColor})`,
+          `drop-shadow(0 0 6px ${auraColor})`,
+          'drop-shadow(0 10px 20px rgba(0,0,0,0.95))',
+        ].join(' '),
+      }}
+      aria-label="Sprite animé du boss"
+    />
+  )
+}
+
 // ─── RETRO VIEWER — JRPG 2D STYLE ────────────────────────────────────────────
-function RetroViewer({ selected, altActive }) {
+function RetroViewer({ selected, altActive, pixelAnimations }) {
   const info = ensureInfo(selected)
   const diff = Math.max(0, Math.min(5, info.difficulty || 3))
-  const palette = PIXEL_PALETTES[diff]
+  const palette   = PIXEL_PALETTES[diff]
   const auraColor = AURA_COLORS[diff]
 
+  // Résolution de l'animDef depuis pixel-animations.json
+  const animDef = selected?.id ? pixelAnimations[selected.id] : null
+
+  // État d'animation : attack si Phase 2 active, sinon idle
+  const animState = altActive ? 'attack' : 'idle'
+
+  // Fallback image (si pas d'animDef)
   const spriteUrl = altActive
     ? (selected?.spriteAttack || selected?.spriteIdle || '')
     : (selected?.spriteIdle || '')
-  const bgUrl = selected?.pixelArenaBackground || ''
+  const bgUrl    = selected?.pixelArenaBackground || ''
   const bossName = (selected?.name || '???').toUpperCase()
 
   return (
     <div
       className="retro-viewer"
       style={{
-        '--aura': auraColor,
-        '--pal-bg': palette.bg,
-        '--pal-mid': palette.mid,
-        '--pal-fg': palette.fg,
+        '--aura':       auraColor,
+        '--pal-bg':     palette.bg,
+        '--pal-mid':    palette.mid,
+        '--pal-fg':     palette.fg,
         '--pal-accent': palette.accent,
         '--pal-shadow': palette.shadow,
-        '--pal-hp': palette.hp,
+        '--pal-hp':     palette.hp,
       }}
     >
       {/* Ciel dégradé + nuages pixel */}
-      <div className="retro-sky" aria-hidden="true" />
+      <div className="retro-sky"    aria-hidden="true" />
       <div className="retro-clouds" aria-hidden="true" />
 
       {/* Fond arène */}
@@ -327,11 +430,19 @@ function RetroViewer({ selected, altActive }) {
       {/* Ombre boss */}
       <div className="retro-ground-shadow" aria-hidden="true" />
 
-      {/* Sprite */}
-      <div className="retro-sprite-wrap">
-        {spriteUrl
-          ? <img className="retro-sprite" src={spriteUrl} alt={selected?.name || 'Boss'} />
-          : <RetroPlaceholderSprite name={selected?.name} color={auraColor} palette={palette} altActive={altActive} />
+      {/* ─── SPRITE : PixelSpritePlayer (animDef) ou fallback ─────────────── */}
+      <div className="retro-sprite-wrap" key={`${selected?.id}-${animState}`}>
+        {animDef
+          ? (
+              <PixelSpritePlayer
+                animDef={animDef}
+                state={animState}
+                auraColor={auraColor}
+              />
+            )
+          : spriteUrl
+            ? <img className="retro-sprite" src={spriteUrl} alt={selected?.name || 'Boss'} />
+            : <RetroPlaceholderSprite name={selected?.name} color={auraColor} palette={palette} altActive={altActive} />
         }
       </div>
 
@@ -360,6 +471,9 @@ function RetroViewer({ selected, altActive }) {
                 <span key={v} style={{ color: v <= diff ? palette.accent : 'rgba(255,255,255,0.15)', filter: v <= diff ? `drop-shadow(0 0 3px ${palette.accent})` : 'none' }}>★</span>
               ))}
             </div>
+            {animDef && (
+              <span className="jrpg-anim-badge" style={{ borderColor: palette.accent, color: palette.accent }}>🎞 ANIM</span>
+            )}
             {altActive && (
               <span className="jrpg-phase-badge" style={{ borderColor: palette.accent, color: palette.accent }}>⚔ PHASE 2</span>
             )}
@@ -386,55 +500,42 @@ function RetroViewer({ selected, altActive }) {
 
 // ─── SPRITE PLACEHOLDER ENRICHI ────────────────────────────────────────────────
 function RetroPlaceholderSprite({ name, color, palette, altActive }) {
-  // Sprite JRPG isométrique style 32x32
   return (
     <div className="retro-placeholder-sprite" style={{ '--aura': color }}>
       <svg viewBox="0 0 72 96" xmlns="http://www.w3.org/2000/svg"
         className={`retro-svg-boss${altActive ? ' retro-svg-attack' : ''}`}>
-        {/* Cape/Manteau */}
         <rect x="14" y="40" width="44" height="48" rx="2" fill={palette.shadow} opacity="0.6" />
         <rect x="18" y="38" width="36" height="46" rx="2" fill={color} opacity="0.7" />
-        {/* Armure torse */}
         <rect x="22" y="24" width="28" height="26" fill={color} />
         <rect x="24" y="26" width="24" height="22" fill={palette.mid} />
-        {/* Détails armure */}
         <rect x="26" y="28" width="20" height="2" fill={palette.accent} opacity="0.6" />
         <rect x="26" y="32" width="20" height="2" fill={palette.accent} opacity="0.4" />
         <rect x="26" y="36" width="20" height="2" fill={palette.accent} opacity="0.25" />
-        {/* Épaulières */}
         <rect x="12" y="22" width="12" height="10" rx="1" fill={color} />
         <rect x="48" y="22" width="12" height="10" rx="1" fill={color} />
         <rect x="13" y="23" width="10" height="3" fill={palette.accent} opacity="0.5" />
         <rect x="49" y="23" width="10" height="3" fill={palette.accent} opacity="0.5" />
-        {/* Tête / heaume */}
         <rect x="26" y="6" width="20" height="18" fill={color} />
         <rect x="28" y="8" width="16" height="14" fill={palette.mid} />
-        {/* Visière */}
         <rect x="28" y="14" width="16" height="6" fill={palette.shadow} />
-        {/* Yeux */}
         <rect x="30" y="15" width="5" height="3" fill={palette.accent} opacity="0.9" />
         <rect x="37" y="15" width="5" height="3" fill={palette.accent} opacity="0.9" />
-        {/* Crête / ornement */}
         <rect x="32" y="2" width="8" height="6" fill={palette.accent} opacity="0.8" />
         <rect x="34" y="0" width="4" height="4" fill={palette.fg} opacity="0.6" />
-        {/* Bras gauche + arme */}
         <rect x="8" y="26" width="10" height="20" rx="1" fill={color} opacity="0.9" />
-        {/* Épée (main droite) */}
         <rect x="56" y="4" width="6" height="52" rx="1" fill="#b8c8d8" />
         <rect x="50" y="28" width="18" height="5" rx="1" fill="#c8b870" />
         <rect x="57" y="5" width="2" height="50" fill="#e8f0ff" opacity="0.5" />
         <rect x="56" y="2" width="6" height="4" fill={palette.accent} opacity="0.8" />
-        {/* Jambes */}
         <rect x="22" y="62" width="13" height="26" fill={color} opacity="0.85" />
         <rect x="37" y="62" width="13" height="26" fill={color} opacity="0.85" />
         <rect x="22" y="84" width="13" height="4" fill={palette.shadow} />
         <rect x="37" y="84" width="13" height="4" fill={palette.shadow} />
-        {/* Slashes attaque */}
         {altActive && (
           <>
             <rect x="54" y="20" width="18" height="4" fill="#ffffff" opacity="0.85" transform="rotate(-20 54 20)" />
             <rect x="56" y="30" width="14" height="3" fill="#ffffff" opacity="0.55" transform="rotate(-20 56 30)" />
-            <rect x="58" y="38" width="10" height="2" fill="#ffffff" opacity="0.3" transform="rotate(-20 58 38)" />
+            <rect x="58" y="38" width="10" height="2" fill="#ffffff" opacity="0.3"  transform="rotate(-20 58 38)" />
           </>
         )}
       </svg>
@@ -468,10 +569,8 @@ function CardsZones({ info, isPixelMode }) {
           <span className="bp-title">Arène & Environnement</span>
         </div>
         <div className="bp-content">
-          <div
-            className={`bp-media-slot${isPixelMode ? ' pixel-img' : ''}`}
-            style={{ backgroundImage: info.arenaImage ? `url(${info.arenaImage})` : 'none' }}
-          >
+          <div className={`bp-media-slot${isPixelMode ? ' pixel-img' : ''}`}
+            style={{ backgroundImage: info.arenaImage ? `url(${info.arenaImage})` : 'none' }}>
             {!info.arenaImage && <span className="bp-media-placeholder">Média Arène</span>}
           </div>
           <div className="bp-text">
@@ -482,17 +581,14 @@ function CardsZones({ info, isPixelMode }) {
           </div>
         </div>
       </div>
-
       <div className="bp-card bp-large">
         <div className="bp-header">
           <span className="bp-icon">⚔</span>
           <span className="bp-title">Arsenal & Mouvements</span>
         </div>
         <div className="bp-content">
-          <div
-            className={`bp-media-slot${isPixelMode ? ' pixel-img' : ''}`}
-            style={{ backgroundImage: info.weaponImage ? `url(${info.weaponImage})` : 'none' }}
-          >
+          <div className={`bp-media-slot${isPixelMode ? ' pixel-img' : ''}`}
+            style={{ backgroundImage: info.weaponImage ? `url(${info.weaponImage})` : 'none' }}>
             {!info.weaponImage && <span className="bp-media-placeholder">Média Arme</span>}
           </div>
           <div className="bp-text">
@@ -503,7 +599,6 @@ function CardsZones({ info, isPixelMode }) {
           </div>
         </div>
       </div>
-
       <div className="bp-card bp-small">
         <div className="bp-header">
           <span className="bp-icon">◈</span>
@@ -545,15 +640,16 @@ function PixelToggleButton({ isPixelMode, onClick }) {
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [models, setModels] = useState([])
-  const [selectedId, setSelectedId] = useState(new URLSearchParams(window.location.search).get('boss') || 'margit')
-  const [search, setSearch] = useState('')
-  const [filterDiff, setFilterDiff] = useState(0)
-  const [autoRotate, setAutoRotate] = useState(true)
-  const [altActive, setAltActive] = useState(false)
-  const [showTip, setShowTip] = useState(true)
-  const [isPixelMode, setIsPixelMode] = useState(false)
-  const [glitching, setGlitching] = useState(false)
+  const [models, setModels]               = useState([])
+  const [pixelAnimations, setPixelAnimations] = useState({}) // ← nouveau
+  const [selectedId, setSelectedId]       = useState(new URLSearchParams(window.location.search).get('boss') || 'margit')
+  const [search, setSearch]               = useState('')
+  const [filterDiff, setFilterDiff]       = useState(0)
+  const [autoRotate, setAutoRotate]       = useState(true)
+  const [altActive, setAltActive]         = useState(false)
+  const [showTip, setShowTip]             = useState(true)
+  const [isPixelMode, setIsPixelMode]     = useState(false)
+  const [glitching, setGlitching]         = useState(false)
 
   const orbitRef = useRef(); const glRef = useRef()
   const selectedModel = models.find(m => m.id === selectedId) || models[0]
@@ -571,15 +667,24 @@ export default function App() {
     setTimeout(() => { setIsPixelMode(v => !v); setGlitching(false) }, 480)
   }, [])
 
+  // Chargement en parallèle de library.json + pixel-animations.json
   useEffect(() => {
-    fetch(LIBRARY_URL).then(r => r.json()).then(data => {
-      const parsed = data.map((m, i) => ({
+    Promise.all([
+      fetch(LIBRARY_URL).then(r => r.json()),
+      fetch(PIXEL_ANIM_URL).then(r => r.json()).catch(() => ({})),
+    ]).then(([libraryData, animData]) => {
+      const parsed = libraryData.map((m, i) => ({
         ...m,
         id: m.id || `boss-${i}`,
-        url: withCorsProxy(m.remoteUrl) || (m.modelPath ? `${import.meta.env.BASE_URL}${m.modelPath}` : ''),
-        altUrl: withCorsProxy(m.remoteUrl2) || (m.modelPath2 ? `${import.meta.env.BASE_URL}${m.modelPath2}` : '')
+        url:    withCorsProxy(m.remoteUrl)  || (m.modelPath  ? `${import.meta.env.BASE_URL}${m.modelPath}`  : ''),
+        altUrl: withCorsProxy(m.remoteUrl2) || (m.modelPath2 ? `${import.meta.env.BASE_URL}${m.modelPath2}` : ''),
       }))
       setModels(parsed)
+      // Filtre les clés internes (_readme) avant de stocker
+      const cleaned = Object.fromEntries(
+        Object.entries(animData).filter(([k]) => !k.startsWith('_'))
+      )
+      setPixelAnimations(cleaned)
     })
   }, [])
 
@@ -685,7 +790,11 @@ export default function App() {
 
             {isPixelMode && (
               <>
-                <RetroViewer selected={selectedModel} altActive={altActive} />
+                <RetroViewer
+                  selected={selectedModel}
+                  altActive={altActive}
+                  pixelAnimations={pixelAnimations}
+                />
                 {selectedModel?.altUrl && (
                   <div className="phase-switcher">
                     <button className={`ps-btn ${!altActive ? 'active' : ''}`} onClick={() => setAltActive(false)}>Phase 1</button>
