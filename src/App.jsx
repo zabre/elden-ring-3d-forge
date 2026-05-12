@@ -1,14 +1,10 @@
-import React, {
-  Component, Suspense, useCallback, useEffect,
-  useMemo, useRef, useState
-} from 'react'
+import React, { Component, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, Pixelation } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 
-// ─── Constantes & Setup ────────────────────────────────────────────────────────
 const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
 const AURA_COLORS = ['#ffffff', '#4a90d9', '#4caf7d', '#e0a030', '#e06020', '#c0392b']
 
@@ -22,24 +18,13 @@ function withCorsProxy(url) {
   return url
 }
 
-// ─── Cache GLB Intelligent ────────────────────────────────────────────────────
-function useModelCache(models, selectedId, compareId) {
+function useModelCache(models, selectedId) {
   const cacheRef = useRef([])
-
   useEffect(() => {
     const urlsToKeep = []
     const selected = models.find(m => m.id === selectedId)
-    const compare = models.find(m => m.id === compareId)
-    
     if (selected?.url) urlsToKeep.push(selected.url)
     if (selected?.altUrl) urlsToKeep.push(selected.altUrl)
-    if (compare?.url) urlsToKeep.push(compare.url)
-
-    const nextIdx = models.findIndex(m => m.id === selectedId) + 1
-    if (models[nextIdx]?.url) {
-      urlsToKeep.push(models[nextIdx].url)
-      try { useGLTF.preload(models[nextIdx].url) } catch {}
-    }
 
     urlsToKeep.forEach(url => {
       if (!cacheRef.current.includes(url)) cacheRef.current.push(url)
@@ -51,21 +36,16 @@ function useModelCache(models, selectedId, compareId) {
         try { useGLTF.clear(oldest) } catch {}
       }
     }
-  }, [models, selectedId, compareId])
+  }, [models, selectedId])
 }
 
-// ─── Error Boundary ───────────────────────────────────────────────────────────
 class ViewerErrorBoundary extends Component {
   state = { hasError: false }
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidUpdate(prevProps) { if (prevProps.url !== this.props.url) this.setState({ hasError: false }) }
-  render() {
-    if (this.state.hasError) return null
-    return this.props.children
-  }
+  render() { return this.state.hasError ? null : this.props.children }
 }
 
-// ─── Éléments 3D ──────────────────────────────────────────────────────────────
 function AshParticles({ color = '#c9a84c', count = 50 }) {
   const meshRef = useRef()
   const data = useMemo(() => {
@@ -93,9 +73,7 @@ function AshParticles({ color = '#c9a84c', count = 50 }) {
 
   return (
     <points ref={meshRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[data.pos, 3]} />
-      </bufferGeometry>
+      <bufferGeometry><bufferAttribute attach="attributes-position" args={[data.pos, 3]} /></bufferGeometry>
       <pointsMaterial size={0.03} color={color} transparent opacity={0.6} sizeAttenuation />
     </points>
   )
@@ -113,7 +91,6 @@ function EldenModel({ url, position = [0, 0, 0] }) {
 
   useEffect(() => setSpawnTime(Date.now()), [url])
 
-  // Restauration de la logique des matériaux originaux (solide, pas de transparence)
   const { object, scale } = useMemo(() => {
     const root = gltf.scene.clone(true)
     root.traverse((node) => {
@@ -121,11 +98,7 @@ function EldenModel({ url, position = [0, 0, 0] }) {
         node.castShadow = true; node.receiveShadow = true
         if (node.material) {
           const mats = Array.isArray(node.material) ? node.material : [node.material]
-          mats.forEach(m => { 
-            m.side = THREE.DoubleSide
-            m.envMapIntensity = 1.2
-            m.needsUpdate = true
-          })
+          mats.forEach(m => { m.side = THREE.DoubleSide; m.envMapIntensity = 1.2; m.needsUpdate = true })
         }
       }
     })
@@ -137,37 +110,23 @@ function EldenModel({ url, position = [0, 0, 0] }) {
     return { object: root, scale: 3.5 / longest }
   }, [gltf.scene])
 
-  // Transition d'entrée fluide (Échelle & Y uniquement, sans toucher à l'alpha)
   useFrame(() => {
     if (!groupRef.current) return
-    const t = Math.min((Date.now() - spawnTime) / 500, 1) // 500ms
-    const ease = 1 - Math.pow(1 - t, 3) // Cubic ease out
+    const t = Math.min((Date.now() - spawnTime) / 500, 1)
+    const ease = 1 - Math.pow(1 - t, 3)
     groupRef.current.position.y = position[1] - 1 + ease
     groupRef.current.scale.setScalar(scale * (0.8 + ease * 0.2))
   })
 
-  return (
-    <group ref={groupRef} position={position}>
-      <primitive object={object} />
-    </group>
-  )
+  return <group ref={groupRef} position={position}><primitive object={object} /></group>
 }
 
-// ─── Scène Globale (Un seul Canvas) ───────────────────────────────────────────
-function Scene({ 
-  selected, compare, altActive, 
-  autoRotate, pixelArt, 
-  orbitRef, glRef 
-}) {
+function Scene({ selected, altActive, autoRotate, orbitRef, glRef }) {
   const { gl } = useThree()
   useEffect(() => { if (glRef) glRef.current = gl }, [gl, glRef])
 
-  const sUrl = altActive && selected?.altUrl ? selected.altUrl : selected?.url
-  const sDiff = ensureInfo(selected).difficulty || 3
-
-  const isCompare = !!compare
-  const cUrl = compare?.url
-  const cDiff = ensureInfo(compare).difficulty || 3
+  const url = altActive && selected?.altUrl ? selected.altUrl : selected?.url
+  const diff = ensureInfo(selected).difficulty || 3
 
   return (
     <>
@@ -178,7 +137,6 @@ function Scene({
       <directionalLight position={[4, 6, 4]} intensity={2.5} castShadow shadow-mapSize={[1024, 1024]} />
       <pointLight position={[-4, 3, -3]} intensity={1.5} color="#8fb5ff" />
 
-      {/* Sol à micro-réflexion */}
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.2, 0]}>
         <circleGeometry args={[8, 64]} />
         <meshStandardMaterial color="#0a0a10" roughness={0.8} metalness={0.4} />
@@ -186,137 +144,83 @@ function Scene({
 
       <Suspense fallback={null}>
         <Environment preset="night" />
-        
-        {/* Boss principal */}
-        {sUrl && (
-          <ViewerErrorBoundary url={sUrl}>
-            <EldenModel url={sUrl} position={isCompare ? [-2.5, 0, 0] : [0, 0, 0]} />
-            <AuraLight difficulty={sDiff} position={isCompare ? [-2.5, -1, 0] : [0, -1, 0]} />
-            <AshParticles color={AURA_COLORS[sDiff]} />
-          </ViewerErrorBoundary>
-        )}
-
-        {/* Boss comparaison */}
-        {isCompare && cUrl && (
-          <ViewerErrorBoundary url={cUrl}>
-            <EldenModel url={cUrl} position={[2.5, 0, 0]} />
-            <AuraLight difficulty={cDiff} position={[2.5, -1, 0]} />
-            <AshParticles color={AURA_COLORS[cDiff]} />
+        {url && (
+          <ViewerErrorBoundary url={url}>
+            <EldenModel url={url} position={[0, 0, 0]} />
+            <AuraLight difficulty={diff} position={[0, -1, 0]} />
+            <AshParticles color={AURA_COLORS[diff]} />
           </ViewerErrorBoundary>
         )}
       </Suspense>
 
-      <OrbitControls 
-        ref={orbitRef} 
-        enableDamping dampingFactor={0.05} 
-        minDistance={3} maxDistance={12} 
-        target={isCompare ? [0, 1, 0] : [0, 1, 0]}
-        autoRotate={autoRotate} autoRotateSpeed={0.5} 
-      />
+      <OrbitControls ref={orbitRef} enableDamping dampingFactor={0.05} minDistance={3} maxDistance={12} target={[0, 1, 0]} autoRotate={autoRotate} autoRotateSpeed={0.5} />
 
       <EffectComposer disableNormalPass>
         <Bloom luminanceThreshold={0.5} intensity={0.8} mipmapBlur />
         <Vignette eskil={false} offset={0.3} darkness={0.8} />
         <ChromaticAberration blendFunction={BlendFunction.NORMAL} offset={[0.001, 0.001]} />
-        {pixelArt && <Pixelation granularity={5} />}
       </EffectComposer>
     </>
   )
 }
 
-// ─── Composants UI (Bottom Panels) ────────────────────────────────────────────
 function CardsZones({ info }) {
-  // Ici on simule l'intégration de médias (images ou canvas miniatures)
-  // Tu pourras remplacer l'intérieur des .bp-media-slot par de vraies balises <img> ou <video>
   return (
     <div className="bottom-panels">
-      
-      {/* Panel 1 : Arène & Environnement */}
       <div className="bp-card bp-large">
         <div className="bp-header">
           <span className="bp-icon">⌖</span>
           <span className="bp-title">Arène & Environnement</span>
         </div>
         <div className="bp-content">
-          <div className="bp-media-slot" style={{ backgroundImage: `url(${info.arenaImage || ''})` }}>
+          <div className="bp-media-slot" style={{ backgroundImage: info.arenaImage ? `url(${info.arenaImage})` : 'none' }}>
             {!info.arenaImage && <span className="bp-media-placeholder">Média Arène</span>}
           </div>
-          <p className="bp-text">{info.arena || info.area || "Informations sur l'arène indisponibles."}</p>
+          <div className="bp-text">{info.arena || info.area || "Informations sur l'arène indisponibles."}</div>
         </div>
       </div>
 
-      {/* Panel 2 : Arsenal & Attaques */}
       <div className="bp-card bp-large">
         <div className="bp-header">
           <span className="bp-icon">⚔</span>
           <span className="bp-title">Arsenal & Mouvements</span>
         </div>
         <div className="bp-content">
-          <div className="bp-media-slot" style={{ backgroundImage: `url(${info.weaponImage || ''})` }}>
+          <div className="bp-media-slot" style={{ backgroundImage: info.weaponImage ? `url(${info.weaponImage})` : 'none' }}>
             {!info.weaponImage && <span className="bp-media-placeholder">Média Arme</span>}
           </div>
-          <p className="bp-text">{info.weapon || info.keyMoves || "Informations sur l'arme indisponibles."}</p>
+          <div className="bp-text">{info.weapon || info.keyMoves || "Informations sur l'arme indisponibles."}</div>
         </div>
       </div>
 
-      {/* Panel 3 : Butin & Drops (Plus petit) */}
       <div className="bp-card bp-small">
         <div className="bp-header">
           <span className="bp-icon">◈</span>
           <span className="bp-title">Butin</span>
         </div>
         <div className="bp-content">
-          <p className="bp-text">{info.drops || "Aucun butin répertorié."}</p>
+          <div className="bp-text">{info.drops || "Aucun butin répertorié."}</div>
         </div>
       </div>
-
     </div>
   )
 }
 
-function CompareTable({ m1, m2 }) {
-  const i1 = ensureInfo(m1); const i2 = ensureInfo(m2)
-  return (
-    <div className="compare-table">
-      <div className="compare-col">
-        <h3 style={{color: 'var(--gold)', fontSize:'0.9rem'}}>{i1.title}</h3>
-        <div className="compare-stat"><span>Zone</span><strong>{i1.area || '-'}</strong></div>
-        <div className="compare-stat"><span>Difficulté</span><strong>{i1.difficulty}/5</strong></div>
-      </div>
-      <div className="compare-col" style={{justifyContent: 'center'}}>
-        <h2 style={{color:'var(--text-faint)', letterSpacing:'0.2em'}}>VS</h2>
-      </div>
-      <div className="compare-col">
-        <h3 style={{color: 'var(--gold)', fontSize:'0.9rem'}}>{i2.title}</h3>
-        <div className="compare-stat"><span>Zone</span><strong>{i2.area || '-'}</strong></div>
-        <div className="compare-stat"><span>Difficulté</span><strong>{i2.difficulty}/5</strong></div>
-      </div>
-    </div>
-  )
-}
-
-// ─── App Principale ───────────────────────────────────────────────────────────
 export default function App() {
   const [models, setModels] = useState([])
   const [selectedId, setSelectedId] = useState(new URLSearchParams(window.location.search).get('boss') || 'margit')
-  const [compareId, setCompareId] = useState(null)
-  
   const [search, setSearch] = useState('')
   const [filterDiff, setFilterDiff] = useState(0)
   
   const [autoRotate, setAutoRotate] = useState(true)
   const [altActive, setAltActive] = useState(false)
-  const [pixelArt, setPixelArt] = useState(false)
   const [showTip, setShowTip] = useState(true)
 
   const orbitRef = useRef(); const glRef = useRef()
-
   const selectedModel = models.find(m => m.id === selectedId) || models[0]
-  const compareModel = models.find(m => m.id === compareId)
   
-  useModelCache(models, selectedId, compareId)
+  useModelCache(models, selectedId)
 
-  // Chargement
   useEffect(() => {
     fetch(LIBRARY_URL).then(r => r.json()).then(data => {
       const parsed = data.map((m, i) => ({
@@ -329,49 +233,23 @@ export default function App() {
     })
   }, [])
 
-  // Update URL
   useEffect(() => {
     if (selectedId) {
       const url = new URL(window.location)
       url.searchParams.set('boss', selectedId)
       window.history.pushState({}, '', url)
-      setAltActive(false); setCompareId(null)
+      setAltActive(false)
       setShowTip(true)
       setTimeout(() => setShowTip(false), 3000)
     }
   }, [selectedId])
 
-  // Raccourcis clavier
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-      const idx = models.findIndex(m => m.id === selectedId)
-      switch(e.key.toLowerCase()) {
-        case 'arrowleft': if (idx > 0) setSelectedId(models[idx - 1].id); break
-        case 'arrowright': if (idx < models.length - 1) setSelectedId(models[idx + 1].id); break
-        case ' ': e.preventDefault(); setAutoRotate(v => !v); break
-        case 'p': setPixelArt(v => !v); break
-        case 'f': document.querySelector('.viewer-wrapper')?.requestFullscreen().catch(()=>{}); break
-        case 'escape': setCompareId(null); break
-      }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [models, selectedId])
-
-  // Filtrage
   const filteredModels = useMemo(() => {
     let res = models
     if (filterDiff > 0) res = res.filter(m => ensureInfo(m).difficulty === filterDiff)
     if (search) res = res.filter(m => (m.name + ensureInfo(m).tags).toLowerCase().includes(search.toLowerCase()))
     return res
   }, [models, search, filterDiff])
-
-  const similarBosses = useMemo(() => {
-    if (!selectedModel) return []
-    const info = ensureInfo(selectedModel)
-    return models.filter(m => m.id !== selectedId && (ensureInfo(m).area === info.area || ensureInfo(m).difficulty === info.difficulty)).slice(0, 2)
-  }, [selectedModel, models, selectedId])
 
   return (
     <div className="app-shell">
@@ -384,7 +262,6 @@ export default function App() {
       </header>
 
       <div className="app-body">
-        {/* Sidebar */}
         <aside className="sidebar">
           <div className="sidebar-search">
             <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -394,9 +271,7 @@ export default function App() {
               <summary>Filtres & Tags</summary>
               <div className="filter-options">
                 {[0,1,2,3,4,5].map(d => (
-                  <button key={d} className={`filter-btn ${filterDiff===d ? 'active':''}`} onClick={() => setFilterDiff(d)}>
-                    {d === 0 ? 'Tous' : `${d}★`}
-                  </button>
+                  <button key={d} className={`filter-btn ${filterDiff===d ? 'active':''}`} onClick={() => setFilterDiff(d)}>{d === 0 ? 'Tous' : `${d}★`}</button>
                 ))}
               </div>
             </details>
@@ -419,26 +294,21 @@ export default function App() {
           </ul>
         </aside>
 
-        {/* Colonne Centrale : Viewer 3D + Panneaux Médias */}
         <main className="main-pane" onPointerDown={() => setShowTip(false)}>
-          
           <div className="viewer-wrapper">
-            <Canvas 
-              className="viewer-canvas" 
-              camera={{ position: [0, 1.5, 6], fov: 45 }} 
-              gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1, preserveDrawingBuffer: true }}
-            >
-              <Scene 
-                selected={selectedModel} compare={compareModel} altActive={altActive}
-                autoRotate={autoRotate} pixelArt={pixelArt}
-                orbitRef={orbitRef} glRef={glRef}
-              />
+            <Canvas className="viewer-canvas" camera={{ position: [0, 1.5, 6], fov: 45 }} gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1, preserveDrawingBuffer: true }}>
+              <Scene selected={selectedModel} altActive={altActive} autoRotate={autoRotate} orbitRef={orbitRef} glRef={glRef} />
             </Canvas>
 
-            {/* Overlays Canvas */}
             {showTip && <div className="viewer-tip">Drag to rotate · Scroll to zoom · Ctrl+drag to pan</div>}
-            {pixelArt && <div className="pixel-art-indicator">Pixel Art ON</div>}
-            {!compareId && <div className="viewer-boss-name">{selectedModel?.name}</div>}
+            
+            {/* Nouveau Selecteur de Phase Visuel */}
+            {selectedModel?.altUrl && (
+              <div className="phase-switcher">
+                <button className={`ps-btn ${!altActive ? 'active' : ''}`} onClick={() => setAltActive(false)}>Phase 1</button>
+                <button className={`ps-btn ${altActive ? 'active' : ''}`} onClick={() => setAltActive(true)}>Phase 2</button>
+              </div>
+            )}
 
             {!selectedModel?.url && (
               <div className="viewer-error">
@@ -447,23 +317,15 @@ export default function App() {
               </div>
             )}
 
-            {/* Barre de contrôles inline */}
             <div className="viewer-controls-bar">
               <button className={`vc-btn ${autoRotate?'active':''}`} onClick={() => setAutoRotate(!autoRotate)} title="Space">⟲ Rotate</button>
               <button className="vc-btn" onClick={() => orbitRef.current?.reset()}>◉ Reset</button>
-              {selectedModel?.altUrl && !compareId && (
-                <button className={`vc-btn ${altActive?'active':''}`} onClick={() => setAltActive(!altActive)}>② Phase 2</button>
-              )}
-              {compareId && <button className="vc-btn active" onClick={() => setCompareId(null)} title="Esc">✕ Quitter Comparaison</button>}
             </div>
           </div>
 
-          {/* Zones UI du bas (remplace l'ancien système de cartes absolues) */}
-          {compareId ? <CompareTable m1={selectedModel} m2={compareModel} /> : (selectedModel && <CardsZones info={ensureInfo(selectedModel)} />)}
-
+          {selectedModel && <CardsZones info={ensureInfo(selectedModel)} />}
         </main>
 
-        {/* Panneau Droit (Info) */}
         <aside className="info-pane">
           {selectedModel && (
             <>
@@ -473,7 +335,6 @@ export default function App() {
                   {[1,2,3,4,5].map(v => <span key={v} className={`star ${v <= ensureInfo(selectedModel).difficulty ? 'active':''}`}>★</span>)}
                 </div>
               </div>
-
               <details className="info-accordion" open>
                 <summary>Style de combat</summary>
                 <div className="info-accordion-body">
@@ -483,7 +344,6 @@ export default function App() {
                   <div className="info-field-value">{ensureInfo(selectedModel).strategyNotes}</div>
                 </div>
               </details>
-
               <details className="info-accordion" open>
                 <summary>Lore</summary>
                 <div className="info-accordion-body">
@@ -492,20 +352,6 @@ export default function App() {
                   </div>
                 </div>
               </details>
-
-              {similarBosses.length > 0 && !compareId && (
-                <div className="similar-bosses">
-                  <span className="similar-label">Boss Similaires</span>
-                  <div className="similar-grid">
-                    {similarBosses.map(sb => (
-                      <div key={sb.id} className="similar-card" onClick={() => setSelectedId(sb.id)}>
-                        <span>{sb.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button className="compare-btn" onClick={() => setCompareId(similarBosses[0].id)}>Comparer ➔</button>
-                </div>
-              )}
             </>
           )}
         </aside>
