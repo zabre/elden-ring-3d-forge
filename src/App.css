@@ -78,7 +78,7 @@ input { font: inherit; color: inherit; }
 .vc-btn { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.75rem; background: rgba(17,16,24,0.8); border: 1px solid rgba(201,168,76,0.15); border-radius: var(--r-full); font-size: 0.65rem; color: var(--text-muted); backdrop-filter: blur(4px); transition: all var(--transition); }
 .vc-btn:hover, .vc-btn.active { background: var(--gold-dim); color: var(--gold); border-color: var(--border); }
 
-/* --- Agrandissement des panneaux du bas (Bottom Panels) --- */
+/* --- PANNEAUX DU BAS (BOTTOM PANELS) - FORMAT 1/3 ÉCRAN --- */
 .bottom-panels {
   flex-shrink: 0;
   display: flex;
@@ -87,11 +87,10 @@ input { font: inherit; color: inherit; }
   background: var(--surface);
   border-top: 1px solid var(--border);
   
-  /* Utilisation de % (vh) : Un peu moins du quart de l'écran */
-  height: 23vh; 
-  /* Sécurités pour éviter un layout cassé sur très petits ou très grands écrans */
-  min-height: 220px; 
-  max-height: 320px;
+  /* 33vh = Exactement 1/3 de la hauteur de la fenêtre ! */
+  height: 33vh; 
+  min-height: 280px; /* Garantit que ça ne s'écrase pas sur un petit PC */
+  max-height: 450px; /* Évite que ça ne prenne trop de place sur un écran 4K */
 }
 
 .bp-card {
@@ -106,15 +105,15 @@ input { font: inherit; color: inherit; }
 .bp-large { flex: 2; }
 .bp-small { flex: 1; }
 
-.bp-header { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; }
-.bp-icon { color: var(--gold); font-size: 0.9rem; }
-.bp-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-faint); letter-spacing: 0.08em; }
+.bp-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem; }
+.bp-icon { color: var(--gold); font-size: 1rem; }
+.bp-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-faint); letter-spacing: 0.1em; }
 
-.bp-content { display: flex; gap: 1rem; align-items: stretch; flex: 1; overflow: hidden; }
+.bp-content { display: flex; gap: 1.25rem; align-items: stretch; flex: 1; overflow: hidden; }
 
-/* Slots Images adaptés à la nouvelle hauteur */
+/* Slots Images GÉANTS pour correspondre au tiers de l'écran */
 .bp-media-slot {
-  width: 180px; /* Légèrement élargi pour de meilleures proportions */
+  width: 260px; /* Très large, parfait pour des screenshots in-game ou des vidéos */
   height: 100%;
   background-color: var(--surface-2);
   border: 1px solid var(--border-soft);
@@ -125,12 +124,21 @@ input { font: inherit; color: inherit; }
   justify-content: center;
   background-size: cover;
   background-position: center;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
 }
-.bp-media-placeholder { font-size: 0.6rem; color: var(--text-faint); text-transform: uppercase; text-align: center; }
+.bp-media-placeholder { font-size: 0.65rem; color: var(--text-faint); text-transform: uppercase; text-align: center; }
 
-/* Texte plus lisible */
-.bp-text { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; flex: 1; padding-right: 0.5rem; }
+/* Texte agrandi pour être à l'échelle */
+.bp-text { 
+  font-size: 0.85rem; 
+  color: var(--text-muted); 
+  line-height: 1.6; 
+  overflow-y: auto; 
+  scrollbar-width: thin; 
+  scrollbar-color: var(--surface-3) transparent; 
+  flex: 1; 
+  padding-right: 0.5rem; 
+}
 
 /* Paneau Info (Droite) */
 .info-pane { background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: thin; z-index: 10; }
