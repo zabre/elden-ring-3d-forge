@@ -22,18 +22,12 @@ function ensureInfo(model) {
   return { title: model?.name || '', difficulty: 3, ...model?.info }
 }
 
-// ─── CORS PROXY ───────────────────────────────────────────────────────────────
-// R2 public buckets support CORS natively — no proxy needed.
-// Only kept as fallback for legacy Google Drive URLs.
 function withCorsProxy(url) {
   if (!url) return url
   if (url.includes('drive.google.com')) return `https://corsproxy.io/?url=${encodeURIComponent(url)}`
   return url
 }
 
-// ─── MODEL CACHE + PRELOAD ────────────────────────────────────────────────────
-// Keeps up to MAX_CACHE models warm. Also preloads the previous and next
-// boss models in the list so switching feels near-instant.
 const MAX_CACHE = 8
 
 function useModelCache(models, selectedId) {
@@ -45,12 +39,10 @@ function useModelCache(models, selectedId) {
     const selectedIdx = models.findIndex(m => m.id === selectedId)
     const selected = models[selectedIdx]
 
-    // Gather URLs to keep warm: current + both phases
     const urlsToKeep = []
     if (selected?.url)    urlsToKeep.push(selected.url)
     if (selected?.altUrl) urlsToKeep.push(selected.altUrl)
 
-    // Preload adjacent bosses (prev + next)
     const adjacents = [
       models[selectedIdx - 1],
       models[selectedIdx + 1],
@@ -61,11 +53,9 @@ function useModelCache(models, selectedId) {
       if (m?.altUrl) { useGLTF.preload(m.altUrl); if (!urlsToKeep.includes(m.altUrl)) urlsToKeep.push(m.altUrl) }
     })
 
-    // Register current model URLs in cache list
     if (selected?.url    && !cacheRef.current.includes(selected.url))    cacheRef.current.push(selected.url)
     if (selected?.altUrl && !cacheRef.current.includes(selected.altUrl)) cacheRef.current.push(selected.altUrl)
 
-    // Evict oldest entries beyond MAX_CACHE
     while (cacheRef.current.length > MAX_CACHE) {
       const oldest = cacheRef.current.shift()
       if (!urlsToKeep.includes(oldest)) {
@@ -195,7 +185,6 @@ function Scene({ selected, altActive, autoRotate, orbitRef, glRef }) {
   )
 }
 
-// ─── PIXEL DUST ───────────────────────────────────────────────────────────────────
 function PixelDust({ palette }) {
   const canvasRef = useRef()
   useEffect(() => {
@@ -242,7 +231,6 @@ function PixelDust({ palette }) {
   return <canvas ref={canvasRef} className="pixel-dust" aria-hidden="true" />
 }
 
-// ─── JRPG HP BAR ──────────────────────────────────────────────────────────────
 function JRPGHPBar({ difficulty, palette }) {
   const maxHP = 240
   const hp = Math.round(maxHP * Math.max(0.08, 1 - (difficulty - 1) / 5.5))
@@ -279,7 +267,6 @@ function JRPGHPBar({ difficulty, palette }) {
   )
 }
 
-// ─── JRPG MP BAR ─────────────────────────────────────────────────────────────
 function JRPGMPBar({ difficulty, palette }) {
   const maxMP = 120
   const mp = Math.round(maxMP * (0.3 + (difficulty / 5) * 0.65))
@@ -298,7 +285,6 @@ function JRPGMPBar({ difficulty, palette }) {
   )
 }
 
-// ─── JRPG HEARTS ────────────────────────────────────────────────────────────────
 function JRPGHearts({ difficulty }) {
   const total = 3
   const full = Math.max(0, total - Math.floor((difficulty - 1) / 2))
@@ -311,7 +297,6 @@ function JRPGHearts({ difficulty }) {
   )
 }
 
-// ─── GIF PLAYER ────────────────────────────────────────────────────────────────────
 function GifPlayer({ animDef, state = 'idle', auraColor }) {
   const [src, setSrc] = useState('')
   const prevState = useRef('')
@@ -351,7 +336,6 @@ function GifPlayer({ animDef, state = 'idle', auraColor }) {
   )
 }
 
-// ─── RETRO VIEWER ─────────────────────────────────────────────────────────────────
 function RetroViewer({ selected, altActive, pixelAnimations }) {
   const info      = ensureInfo(selected)
   const diff      = Math.max(0, Math.min(5, info.difficulty || 3))
@@ -448,7 +432,6 @@ function RetroViewer({ selected, altActive, pixelAnimations }) {
   )
 }
 
-// ─── PLACEHOLDER SVG ──────────────────────────────────────────────────────────────
 function RetroPlaceholderSprite({ name, color, palette, altActive }) {
   return (
     <div className="retro-placeholder-sprite" style={{ '--aura': color }}>
@@ -493,7 +476,6 @@ function RetroPlaceholderSprite({ name, color, palette, altActive }) {
   )
 }
 
-// ─── TYPEWRITER ────────────────────────────────────────────────────────────────────
 function Typewriter({ text, speed = 25 }) {
   const [displayed, setDisplayed] = useState('')
   useEffect(() => {
@@ -509,14 +491,13 @@ function Typewriter({ text, speed = 25 }) {
   return <span>{displayed}<span className="retro-cursor">▌</span></span>
 }
 
-// ─── CARDS ZONES ──────────────────────────────────────────────────────────────
 function CardsZones({ info, isPixelMode }) {
   return (
     <div className="bottom-panels">
       <div className="bp-card bp-large">
         <div className="bp-header">
           <span className="bp-icon">⌖</span>
-          <span className="bp-title">Arène & Environnement</span>
+          <span className="bp-title">Arène &amp; Environnement</span>
         </div>
         <div className="bp-content">
           <div className={`bp-media-slot${isPixelMode ? ' pixel-img' : ''}`}
@@ -534,7 +515,7 @@ function CardsZones({ info, isPixelMode }) {
       <div className="bp-card bp-large">
         <div className="bp-header">
           <span className="bp-icon">⚔</span>
-          <span className="bp-title">Arsenal & Mouvements</span>
+          <span className="bp-title">Arsenal &amp; Mouvements</span>
         </div>
         <div className="bp-content">
           <div className={`bp-media-slot${isPixelMode ? ' pixel-img' : ''}`}
@@ -567,7 +548,6 @@ function CardsZones({ info, isPixelMode }) {
   )
 }
 
-// ─── GLITCH + TOGGLE ──────────────────────────────────────────────────────────────
 function GlitchTransition({ active }) {
   if (!active) return null
   return <div className="glitch-overlay" aria-hidden="true" />
@@ -599,6 +579,7 @@ export default function App() {
   const [showTip, setShowTip]                 = useState(true)
   const [isPixelMode, setIsPixelMode]         = useState(false)
   const [glitching, setGlitching]             = useState(false)
+  const [sidebarOpen, setSidebarOpen]         = useState(false)
 
   const orbitRef = useRef(); const glRef = useRef()
   const selectedModel = models.find(m => m.id === selectedId) || models[0]
@@ -614,6 +595,12 @@ export default function App() {
   const handlePixelToggle = useCallback(() => {
     setGlitching(true)
     setTimeout(() => { setIsPixelMode(v => !v); setGlitching(false) }, 480)
+  }, [])
+
+  // Sélectionne un boss ET ferme la sidebar sur mobile
+  const handleSelectBoss = useCallback((id) => {
+    setSelectedId(id)
+    setSidebarOpen(false)
   }, [])
 
   useEffect(() => {
@@ -671,13 +658,32 @@ export default function App() {
       </header>
 
       <div className="app-body">
-        <aside className="sidebar">
+        {/* Bouton hamburger — visible uniquement sur mobile via CSS */}
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setSidebarOpen(v => !v)}
+          aria-label="Ouvrir la liste des boss"
+          aria-expanded={sidebarOpen}
+        >
+          ☰ Boss
+        </button>
+
+        {/* Backdrop pour fermer la sidebar en cliquant à côté */}
+        {sidebarOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
           <div className="sidebar-search">
             <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div className="sidebar-filters">
             <details>
-              <summary>Filtres & Tags</summary>
+              <summary>Filtres &amp; Tags</summary>
               <div className="filter-options">
                 {[0,1,2,3,4,5].map(d => (
                   <button key={d} className={`filter-btn ${filterDiff===d?'active':''}`} onClick={() => setFilterDiff(d)}>{d === 0 ? 'Tous' : `${d}★`}</button>
@@ -690,7 +696,7 @@ export default function App() {
               const diff = ensureInfo(m).difficulty || 0
               return (
                 <li key={m.id}>
-                  <button className={`model-item ${selectedId === m.id ? 'active' : ''}`} onClick={() => setSelectedId(m.id)}>
+                  <button className={`model-item ${selectedId === m.id ? 'active' : ''}`} onClick={() => handleSelectBoss(m.id)}>
                     <div className="model-item-top">
                       <span className="model-diff-dot" style={{ background: AURA_COLORS[diff] }} />
                       <span className="model-name">{m.name}</span>
