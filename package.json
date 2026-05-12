@@ -10,11 +10,11 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "three": "^0.164.0",
+    "three": "^0.169.0",
     "@react-three/fiber": "^8.15.10",
     "@react-three/drei": "^9.74.6",
     "@react-three/postprocessing": "^2.16.2",
-    "postprocessing": "^6.36.3"
+    "postprocessing": "^6.39.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react-swc": "^3.5.0",
