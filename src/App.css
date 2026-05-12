@@ -87,8 +87,6 @@ input { font: inherit; color: inherit; }
   padding: 1.5rem;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  
-  /* 42vh = Légèrement plus de 40% de la hauteur de la fenêtre ! */
   height: 42vh; 
   min-height: 320px; 
   max-height: 500px; 
@@ -122,9 +120,9 @@ input { font: inherit; color: inherit; }
 
 .bp-content { display: flex; gap: 1.5rem; align-items: stretch; flex: 1; overflow: hidden; }
 
-/* Slots Images GÉANTS adaptés à 42vh */
+/* Slots Images légèrement réduits (300px) pour laisser de la place au texte */
 .bp-media-slot {
-  width: 360px; /* Énorme largeur pour un format cinématographique 16:9 */
+  width: 300px; 
   height: 100%;
   background-color: var(--surface-2);
   border: 1px solid var(--border-soft);
@@ -139,11 +137,11 @@ input { font: inherit; color: inherit; }
 }
 .bp-media-placeholder { font-size: 0.7rem; color: var(--text-faint); text-transform: uppercase; text-align: center; letter-spacing: 0.1em; }
 
-/* Texte très lisible */
+/* Texte légèrement réduit et plus de place pour respirer */
 .bp-text { 
-  font-size: 0.9rem; 
+  font-size: 0.8rem; /* Police réduite */
   color: var(--text-muted); 
-  line-height: 1.65; 
+  line-height: 1.6; 
   overflow-y: auto; 
   scrollbar-width: thin; 
   scrollbar-color: var(--surface-3) transparent; 
