@@ -1,6 +1,6 @@
 {
   "name": "elden-ring-3d-forge",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,9 @@
     "react-dom": "^18.2.0",
     "three": "^0.164.0",
     "@react-three/fiber": "^8.15.10",
-    "@react-three/drei": "^9.74.6"
+    "@react-three/drei": "^9.74.6",
+    "@react-three/postprocessing": "^2.16.2",
+    "postprocessing": "^6.36.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react-swc": "^3.5.0",
