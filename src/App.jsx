@@ -7,6 +7,14 @@ import * as THREE from 'three'
 
 const LIBRARY_URL = `${import.meta.env.BASE_URL}library.json`
 const AURA_COLORS = ['#ffffff', '#4a90d9', '#4caf7d', '#e0a030', '#e06020', '#c0392b']
+const PIXEL_PALETTES = [
+  { bg: '#1a1a2e', fg: '#e0e0ff', accent: '#ffffff', shadow: '#0d0d1a' },
+  { bg: '#0d1b2a', fg: '#7ec8e3', accent: '#4a90d9', shadow: '#060e14' },
+  { bg: '#0a1a0f', fg: '#7aef7a', accent: '#4caf7d', shadow: '#050d07' },
+  { bg: '#1a1200', fg: '#ffd26a', accent: '#e0a030', shadow: '#0d0900' },
+  { bg: '#1a0800', fg: '#ffb07a', accent: '#e06020', shadow: '#0d0400' },
+  { bg: '#1a0005', fg: '#ff7a9a', accent: '#c0392b', shadow: '#0d0003' },
+]
 
 function ensureInfo(model) {
   return { title: model?.name || '', difficulty: 3, ...model?.info }
@@ -164,63 +172,219 @@ function Scene({ selected, altActive, autoRotate, orbitRef, glRef }) {
   )
 }
 
-// ─── RETRO VIEWER (2D Pixel Mode) ─────────────────────────────────────────────
+// ─── PIXEL PARTICLES (canvas-based embers) ────────────────────────────────────
+function PixelEmbers({ color }) {
+  const canvasRef = useRef()
+  const particlesRef = useRef([])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const W = canvas.width = canvas.offsetWidth
+    const H = canvas.height = canvas.offsetHeight
+
+    particlesRef.current = Array.from({ length: 28 }, (_, i) => ({
+      x: Math.random() * W,
+      y: H - Math.random() * H * 0.4,
+      size: (Math.floor(Math.random() * 3) + 1) * 2,
+      speed: 0.4 + Math.random() * 0.8,
+      drift: (Math.random() - 0.5) * 0.5,
+      life: Math.random(),
+      maxLife: 0.6 + Math.random() * 0.4,
+    }))
+
+    let raf
+    function draw() {
+      ctx.clearRect(0, 0, W, H)
+      particlesRef.current.forEach(p => {
+        p.y -= p.speed
+        p.x += p.drift + Math.sin(p.y * 0.03) * 0.3
+        p.life += 0.008
+        if (p.life >= p.maxLife || p.y < 0) {
+          p.x = Math.random() * W
+          p.y = H
+          p.life = 0
+          p.size = (Math.floor(Math.random() * 3) + 1) * 2
+        }
+        const alpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.9
+        ctx.globalAlpha = alpha
+        ctx.fillStyle = color
+        ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size)
+      })
+      ctx.globalAlpha = 1
+      raf = requestAnimationFrame(draw)
+    }
+    draw()
+    return () => cancelAnimationFrame(raf)
+  }, [color])
+
+  return <canvas ref={canvasRef} className="pixel-embers" aria-hidden="true" />
+}
+
+// ─── HP BAR ────────────────────────────────────────────────────────────────────
+function PixelHPBar({ difficulty, accent }) {
+  const pct = Math.max(0.05, 1 - (difficulty - 1) / 5)
+  const segments = 20
+  const filled = Math.round(pct * segments)
+  const [animPct, setAnimPct] = useState(1)
+
+  useEffect(() => {
+    setAnimPct(1)
+    let frame
+    let start = null
+    function step(ts) {
+      if (!start) start = ts
+      const t = Math.min((ts - start) / 900, 1)
+      setAnimPct(1 - (1 - pct) * t)
+      if (t < 1) frame = requestAnimationFrame(step)
+    }
+    frame = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(frame)
+  }, [pct])
+
+  const animFilled = Math.round(animPct * segments)
+
+  return (
+    <div className="pixel-hpbar-wrap">
+      <span className="pixel-hpbar-label">HP</span>
+      <div className="pixel-hpbar">
+        {Array.from({ length: segments }, (_, i) => (
+          <div
+            key={i}
+            className="pixel-hpbar-seg"
+            style={{
+              background: i < animFilled
+                ? (i < segments * 0.3 ? '#c0392b' : i < segments * 0.6 ? '#e0a030' : accent)
+                : 'rgba(0,0,0,0.5)',
+              boxShadow: i < animFilled ? `0 0 4px ${accent}` : 'none',
+            }}
+          />
+        ))}
+      </div>
+      <span className="pixel-hpbar-val" style={{ color: accent }}>{difficulty}★</span>
+    </div>
+  )
+}
+
+// ─── RETRO VIEWER (SNES/GBA-style boss fight) ─────────────────────────────────
 function RetroViewer({ selected, altActive }) {
   const info = ensureInfo(selected)
-  const diff = info.difficulty || 3
+  const diff = Math.max(0, Math.min(5, info.difficulty || 3))
+  const palette = PIXEL_PALETTES[diff]
   const auraColor = AURA_COLORS[diff]
 
-  // Pick sprite: altActive → spriteAttack, else → spriteIdle
   const spriteUrl = altActive
     ? (selected?.spriteAttack || selected?.spriteIdle || '')
     : (selected?.spriteIdle || '')
-
   const bgUrl = selected?.pixelArenaBackground || ''
+  const bossName = (selected?.name || '???').toUpperCase()
 
   return (
-    <div className="retro-viewer" style={{ '--aura': auraColor }}>
-      {/* Pixel arena background */}
+    <div className="retro-viewer" style={{ '--aura': auraColor, '--pal-bg': palette.bg, '--pal-fg': palette.fg, '--pal-accent': palette.accent, '--pal-shadow': palette.shadow }}>
+
+      {/* Layer 1 — parallax far tiles */}
+      <div className="retro-tiles retro-tiles-far" aria-hidden="true" />
+      {/* Layer 2 — parallax near tiles */}
+      <div className="retro-tiles retro-tiles-near" aria-hidden="true" />
+
+      {/* Arena background image */}
       {bgUrl
         ? <div className="retro-arena-bg" style={{ backgroundImage: `url(${bgUrl})` }} />
         : <div className="retro-arena-bg retro-arena-placeholder" />
       }
 
+      {/* Ground shadow */}
+      <div className="retro-ground-shadow" aria-hidden="true" />
+
       {/* Boss sprite / placeholder */}
       <div className="retro-sprite-wrap">
         {spriteUrl
           ? <img className="retro-sprite" src={spriteUrl} alt={selected?.name || 'Boss'} />
-          : <RetroPlaceholderSprite name={selected?.name} color={auraColor} />
+          : <RetroPlaceholderSprite name={selected?.name} color={auraColor} palette={palette} altActive={altActive} />
         }
       </div>
 
-      {/* CRT scanlines overlay */}
+      {/* HUD — top bar: boss name + HP */}
+      <div className="retro-hud-top">
+        <div className="retro-hud-nameplate">
+          <span className="retro-hud-label">BOSS</span>
+          <span className="retro-hud-name" style={{ color: palette.accent }}>{bossName}</span>
+        </div>
+        <PixelHPBar difficulty={diff} accent={palette.accent} />
+      </div>
+
+      {/* HUD — bottom corners: diff stars + phase */}
+      <div className="retro-hud-bottom">
+        <div className="retro-hud-stars">
+          {[1,2,3,4,5].map(v => (
+            <span key={v} className="retro-star" style={{ color: v <= diff ? palette.accent : 'rgba(255,255,255,0.12)' }}>★</span>
+          ))}
+        </div>
+        <div className="retro-hud-phase">
+          {altActive
+            ? <span className="retro-phase-tag" style={{ borderColor: palette.accent, color: palette.accent }}>⚔ ATK</span>
+            : <span className="retro-phase-tag" style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.4)' }}>◈ IDLE</span>
+          }
+        </div>
+      </div>
+
+      {/* Ember particles */}
+      <PixelEmbers color={auraColor} />
+
+      {/* Frame corners */}
+      <div className="retro-corner retro-corner-tl" aria-hidden="true" />
+      <div className="retro-corner retro-corner-tr" aria-hidden="true" />
+      <div className="retro-corner retro-corner-bl" aria-hidden="true" />
+      <div className="retro-corner retro-corner-br" aria-hidden="true" />
+
+      {/* CRT scanlines */}
       <div className="retro-scanlines" aria-hidden="true" />
-      {/* Color bleed overlay */}
+      {/* Color bleed */}
       <div className="retro-bleed" aria-hidden="true" />
     </div>
   )
 }
 
-// Animated SVG placeholder when no pixel sprite is provided
-function RetroPlaceholderSprite({ name, color }) {
+// ─── ANIMATED SVG PLACEHOLDER ─────────────────────────────────────────────────
+function RetroPlaceholderSprite({ name, color, palette, altActive }) {
   return (
     <div className="retro-placeholder-sprite" style={{ '--aura': color }}>
-      <svg viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg" className="retro-svg-boss">
-        {/* Pixelated silhouette - 8x8 grid figure */}
-        <rect x="24" y="0" width="16" height="16" fill={color} />
+      <svg viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg" className={`retro-svg-boss${altActive ? ' retro-svg-attack' : ''}`}>
+        {/* Body */}
+        <rect x="24" y="0"  width="16" height="16" fill={color} />
         <rect x="20" y="16" width="24" height="20" fill={color} />
-        <rect x="12" y="20" width="8" height="14" fill={color} opacity="0.8" />
-        <rect x="44" y="20" width="8" height="14" fill={color} opacity="0.8" />
+        {/* Arms */}
+        <rect x="12" y="20" width="8"  height="14" fill={color} opacity="0.85" />
+        <rect x="44" y="20" width="8"  height="14" fill={color} opacity="0.85" />
+        {/* Legs */}
         <rect x="20" y="36" width="10" height="28" fill={color} />
         <rect x="34" y="36" width="10" height="28" fill={color} />
         {/* Eyes */}
-        <rect x="26" y="5" width="4" height="4" fill="#000" />
-        <rect x="34" y="5" width="4" height="4" fill="#000" />
+        <rect x="26" y="5" width="4" height="4" fill={palette?.shadow || '#000'} />
+        <rect x="34" y="5" width="4" height="4" fill={palette?.shadow || '#000'} />
+        {/* Inner eye glow */}
+        <rect x="27" y="6" width="2" height="2" fill={palette?.fg || '#fff'} opacity="0.8" />
+        <rect x="35" y="6" width="2" height="2" fill={palette?.fg || '#fff'} opacity="0.8" />
         {/* Sword */}
-        <rect x="52" y="10" width="4" height="32" fill="#aaa" />
-        <rect x="48" y="22" width="12" height="4" fill="#aaa" />
+        <rect x="52" y="8"  width="4" height="36" fill="#c8c8d8" />
+        <rect x="46" y="20" width="16" height="4" fill="#c8c8d8" />
+        {/* Sword highlight */}
+        <rect x="53" y="9"  width="1" height="34" fill="#ffffff" opacity="0.5" />
+        {/* Crown / horns */}
+        <rect x="22" y="0"  width="4" height="6" fill={color} />
+        <rect x="38" y="0"  width="4" height="6" fill={color} />
+        <rect x="28" y="0" width="8" height="4" fill={palette?.fg || '#fff'} opacity="0.3" />
+        {/* Attack slash */}
+        {altActive && (
+          <>
+            <rect x="44" y="30" width="20" height="3" fill={palette?.fg || '#fff'} opacity="0.9" />
+            <rect x="48" y="26" width="16" height="3" fill={palette?.fg || '#fff'} opacity="0.6" />
+            <rect x="52" y="22" width="12" height="3" fill={palette?.fg || '#fff'} opacity="0.3" />
+          </>
+        )}
       </svg>
-      <div className="retro-placeholder-name">{name || '???'}</div>
+      <div className="retro-placeholder-name" style={{ color }}>{name || '???'}</div>
     </div>
   )
 }
@@ -336,7 +500,6 @@ export default function App() {
   const [altActive, setAltActive] = useState(false)
   const [showTip, setShowTip] = useState(true)
 
-  // ── Pixel Mode state
   const [isPixelMode, setIsPixelMode] = useState(false)
   const [glitching, setGlitching] = useState(false)
 
@@ -345,7 +508,6 @@ export default function App() {
 
   useModelCache(models, selectedId)
 
-  // Apply / remove theme-pixel on <body>
   useEffect(() => {
     if (isPixelMode) {
       document.body.classList.add('theme-pixel')
@@ -395,7 +557,6 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {/* Global glitch transition overlay */}
       <GlitchTransition active={glitching} />
 
       <header className="app-header">
@@ -447,7 +608,6 @@ export default function App() {
 
         <main className="main-pane" onPointerDown={() => setShowTip(false)}>
           <div className="viewer-wrapper">
-            {/* ── 3D viewer (hidden in pixel mode) */}
             {!isPixelMode && (
               <>
                 <Canvas
@@ -481,7 +641,6 @@ export default function App() {
               </>
             )}
 
-            {/* ── 2D Pixel viewer */}
             {isPixelMode && (
               <>
                 <RetroViewer selected={selectedModel} altActive={altActive} />
