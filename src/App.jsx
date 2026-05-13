@@ -491,10 +491,11 @@ function Typewriter({ text, speed = 25 }) {
   return <span>{displayed}<span className="retro-cursor">▌</span></span>
 }
 
+// Carte Arène + Arsenal uniquement — Butin déplacé dans info-pane
 function CardsZones({ info, isPixelMode }) {
   return (
     <div className="bottom-panels">
-      <div className="bp-card bp-large">
+      <div className="bp-card">
         <div className="bp-header">
           <span className="bp-icon">⌖</span>
           <span className="bp-title">Arène &amp; Environnement</span>
@@ -512,7 +513,7 @@ function CardsZones({ info, isPixelMode }) {
           </div>
         </div>
       </div>
-      <div className="bp-card bp-large">
+      <div className="bp-card">
         <div className="bp-header">
           <span className="bp-icon">⚔</span>
           <span className="bp-title">Arsenal &amp; Mouvements</span>
@@ -526,20 +527,6 @@ function CardsZones({ info, isPixelMode }) {
             {isPixelMode
               ? <Typewriter text={info.weapon || info.keyMoves || "Informations sur l'arme indisponibles."} speed={20} />
               : (info.weapon || info.keyMoves || "Informations sur l'arme indisponibles.")
-            }
-          </div>
-        </div>
-      </div>
-      <div className="bp-card bp-small">
-        <div className="bp-header">
-          <span className="bp-icon">◈</span>
-          <span className="bp-title">Butin</span>
-        </div>
-        <div className="bp-content">
-          <div className="bp-text">
-            {isPixelMode
-              ? <Typewriter text={info.drops || "Aucun butin répertorié."} speed={30} />
-              : (info.drops || "Aucun butin répertorié.")
             }
           </div>
         </div>
@@ -597,7 +584,6 @@ export default function App() {
     setTimeout(() => { setIsPixelMode(v => !v); setGlitching(false) }, 480)
   }, [])
 
-  // Sélectionne un boss ET ferme la sidebar sur mobile
   const handleSelectBoss = useCallback((id) => {
     setSelectedId(id)
     setSidebarOpen(false)
@@ -652,7 +638,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bouton hamburger — dans le header, toujours visible sur mobile */}
         <button
           className="mobile-menu-btn"
           onClick={() => setSidebarOpen(v => !v)}
@@ -670,7 +655,6 @@ export default function App() {
       </header>
 
       <div className="app-body">
-        {/* Backdrop pour fermer la sidebar en cliquant à côté */}
         {sidebarOpen && (
           <div
             className="sidebar-backdrop"
@@ -759,51 +743,61 @@ export default function App() {
         </main>
 
         <aside className="info-pane">
-          {selectedModel && (
-            <>
-              <div className="info-header">
-                <h2 className="info-boss-name">
-                  {isPixelMode
-                    ? <Typewriter text={ensureInfo(selectedModel).title} speed={40} />
-                    : ensureInfo(selectedModel).title
-                  }
-                </h2>
-                <div className="diff-stars">
-                  {[1,2,3,4,5].map(v => <span key={v} className={`star ${v <= ensureInfo(selectedModel).difficulty ? 'active':''}`}>★</span>)}
-                </div>
-              </div>
-              <details className="info-accordion" open>
-                <summary>Style de combat</summary>
-                <div className="info-accordion-body">
-                  <div className="info-field-label">Patterns</div>
-                  <div className="info-field-value">
+          {selectedModel && (() => {
+            const info = ensureInfo(selectedModel)
+            return (
+              <>
+                <div className="info-header">
+                  <h2 className="info-boss-name">
                     {isPixelMode
-                      ? <Typewriter text={ensureInfo(selectedModel).keyMoves} speed={15} />
-                      : ensureInfo(selectedModel).keyMoves
+                      ? <Typewriter text={info.title} speed={40} />
+                      : info.title
                     }
+                  </h2>
+                  <div className="diff-stars">
+                    {[1,2,3,4,5].map(v => <span key={v} className={`star ${v <= info.difficulty ? 'active':''}`}>★</span>)}
                   </div>
-                  <div className="info-field-label" style={{marginTop:'0.5rem'}}>Stratégie</div>
-                  <div className="info-field-value">
-                    {isPixelMode
-                      ? <Typewriter text={ensureInfo(selectedModel).strategyNotes} speed={15} />
-                      : ensureInfo(selectedModel).strategyNotes
-                    }
-                  </div>
+                  {/* Butin inline — sous les étoiles */}
+                  {info.drops && (
+                    <div className="info-drops-inline">
+                      <span className="info-drops-icon">◈</span>
+                      <span className="info-drops-text">{info.drops}</span>
+                    </div>
+                  )}
                 </div>
-              </details>
-              <details className="info-accordion" open>
-                <summary>Lore</summary>
-                <div className="info-accordion-body">
-                  <div className="info-field-value" style={{ fontStyle:'italic', color:'var(--text-muted)' }}>
-                    {isPixelMode
-                      ? <Typewriter text={ensureInfo(selectedModel).lore || 'Aucune archive trouvée.'} speed={20} />
-                      : (ensureInfo(selectedModel).lore || 'Aucune archive trouvée.')
-                    }
+                <details className="info-accordion" open>
+                  <summary>Style de combat</summary>
+                  <div className="info-accordion-body">
+                    <div className="info-field-label">Patterns</div>
+                    <div className="info-field-value">
+                      {isPixelMode
+                        ? <Typewriter text={info.keyMoves} speed={15} />
+                        : info.keyMoves
+                      }
+                    </div>
+                    <div className="info-field-label" style={{marginTop:'0.5rem'}}>Stratégie</div>
+                    <div className="info-field-value">
+                      {isPixelMode
+                        ? <Typewriter text={info.strategyNotes} speed={15} />
+                        : info.strategyNotes
+                      }
+                    </div>
                   </div>
-                </div>
-              </details>
-            </>
-          )}
+                </details>
+                <details className="info-accordion" open>
+                  <summary>Lore</summary>
+                  <div className="info-accordion-body">
+                    <div className="info-field-value" style={{ fontStyle:'italic', color:'var(--text-muted)' }}>
+                      {isPixelMode
+                        ? <Typewriter text={info.lore || 'Aucune archive trouvée.'} speed={20} />
+                        : (info.lore || 'Aucune archive trouvée.')
+                      }
+                    </div>
+                  </div>
+                </details>
+              </>
+            )
+          })()}
         </aside>
       </div>
     </div>
