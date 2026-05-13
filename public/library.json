@@ -256,8 +256,8 @@
     "name": "Radagon of the Golden Order / Elden Beast",
     "modelPath": "models/radagon-phase1.glb",
     "modelPath2": "models/elden-beast-phase2.glb",
-    "remoteUrl": "",
-    "remoteUrl2": "",
+    "remoteUrl": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/radagon-1.glb",
+    "remoteUrl2": "https://pub-8ed91016ec4d48e8b3cfa570df59f7a2.r2.dev/radagon-2.glb",
     "info": {
       "title": "Radagon of the Golden Order / Elden Beast",
       "difficulty": 5,
