@@ -1,0 +1,4 @@
+# Dossier pour vos spritesheets pixel art
+# Format attendu : PNG horizontal strip (une ligne = une animation)
+# Exemple : margit.png, malenia.png, etc.
+# Voir public/pixel-animations.json pour les dimensions et config de chaque boss.
