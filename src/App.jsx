@@ -9,6 +9,9 @@ const LIBRARY_URL    = `${import.meta.env.BASE_URL}library.json`
 const PIXEL_ANIM_URL = `${import.meta.env.BASE_URL}pixel-animations.json`
 const AURA_COLORS = ['#ffffff', '#4a90d9', '#4caf7d', '#e0a030', '#e06020', '#c0392b']
 
+// Détection mobile — utilisé pour les optimisations GPU
+const IS_MOBILE = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0
+
 const PIXEL_PALETTES = [
   { bg: '#1c1610', mid: '#2e2518', fg: '#c8b89a', accent: '#e8d5b0', shadow: '#0d0b08', hp: '#a8956e', name: 'VOYAGEUR' },
   { bg: '#0e1620', mid: '#1a2535', fg: '#8ab4d8', accent: '#b8d4f0', shadow: '#070d14', hp: '#5a8ab0', name: 'GARDIEN' },
@@ -43,15 +46,18 @@ function useModelCache(models, selectedId) {
     if (selected?.url)    urlsToKeep.push(selected.url)
     if (selected?.altUrl) urlsToKeep.push(selected.altUrl)
 
-    const adjacents = [
-      models[selectedIdx - 1],
-      models[selectedIdx + 1],
-    ].filter(Boolean)
+    // Sur mobile : pas de préchargement des voisins — trop coûteux en VRAM
+    if (!IS_MOBILE) {
+      const adjacents = [
+        models[selectedIdx - 1],
+        models[selectedIdx + 1],
+      ].filter(Boolean)
 
-    adjacents.forEach(m => {
-      if (m?.url)    { useGLTF.preload(m.url);    if (!urlsToKeep.includes(m.url))    urlsToKeep.push(m.url) }
-      if (m?.altUrl) { useGLTF.preload(m.altUrl); if (!urlsToKeep.includes(m.altUrl)) urlsToKeep.push(m.altUrl) }
-    })
+      adjacents.forEach(m => {
+        if (m?.url)    { useGLTF.preload(m.url);    if (!urlsToKeep.includes(m.url))    urlsToKeep.push(m.url) }
+        if (m?.altUrl) { useGLTF.preload(m.altUrl); if (!urlsToKeep.includes(m.altUrl)) urlsToKeep.push(m.altUrl) }
+      })
+    }
 
     if (selected?.url    && !cacheRef.current.includes(selected.url))    cacheRef.current.push(selected.url)
     if (selected?.altUrl && !cacheRef.current.includes(selected.altUrl)) cacheRef.current.push(selected.altUrl)
@@ -702,6 +708,7 @@ export default function App() {
                 <Canvas
                   className="viewer-canvas"
                   camera={{ position: [0, 1.5, 6], fov: 45 }}
+                  dpr={IS_MOBILE ? [1, 1.5] : [1, 2]}
                   gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1, preserveDrawingBuffer: true }}
                 >
                   <Scene selected={selectedModel} altActive={altActive} autoRotate={autoRotate} orbitRef={orbitRef} glRef={glRef} />
@@ -757,7 +764,6 @@ export default function App() {
                   <div className="diff-stars">
                     {[1,2,3,4,5].map(v => <span key={v} className={`star ${v <= info.difficulty ? 'active':''}`}>★</span>)}
                   </div>
-                  {/* Butin inline — sous les étoiles */}
                   {info.drops && (
                     <div className="info-drops-inline">
                       <span className="info-drops-icon">◈</span>
